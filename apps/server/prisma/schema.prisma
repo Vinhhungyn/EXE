@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AnonymousSession {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  displayName  String
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  isOnline     Boolean  @default(false)
+  messages     Message[]
+  reports      Report[] @relation("reporter")
+
+  @@map("anonymous_sessions")
+}
+
+model ChatRoom {
+  id           String            @id @default(uuid())
+  roomType     RoomType          @default(PEER)
+  status       RoomStatus        @default(ACTIVE)
+  createdAt    DateTime          @default(now())
+  closedAt     DateTime?
+  messages     Message[]
+  participants ChatParticipant[]
+
+  @@map("chat_rooms")
+}
+
+model ChatParticipant {
+  id        String    @id @default(uuid())
+  roomId    String
+  sessionId String
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  room      ChatRoom  @relation(fields: [roomId], references: [id])
+
+  @@unique([roomId, sessionId])
+  @@map("chat_participants")
+}
+
+model Message {
+  id        String           @id @default(uuid())
+  roomId    String
+  sessionId String
+  content   String
+  createdAt DateTime         @default(now())
+  room      ChatRoom         @relation(fields: [roomId], references: [id])
+  session   AnonymousSession @relation(fields: [sessionId], references: [id])
+  reports   Report[]
+
+  @@map("messages")
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  messageId  String
+  reporterId String
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now())
+  message    Message          @relation(fields: [messageId], references: [id])
+  reporter   AnonymousSession @relation("reporter", fields: [reporterId], references: [id])
+
+  @@map("reports")
+}
+
+enum RoomType {
+  PEER
+  AI
+}
+
+enum RoomStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
