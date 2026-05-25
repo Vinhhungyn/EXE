@@ -1,0 +1,528 @@
+🌿 Relax&Chill — Technical Project Document
+
+Platform tâm sự ẩn danh kết hợp AI hỗ trợ cảm xúc 24/7
+Team: Black Diamond | EXE101-Group04 | FPTU Cần Thơ
+
+
+📋 Mục Lục
+
+Tổng Quan Dự Án
+Tech Stack
+Kiến Trúc Hệ Thống
+Cấu Trúc Thư Mục
+Database Schema
+API Design
+Tính Năng & Module
+Bảo Mật & Ẩn Danh
+Docker & Deployment
+Hướng Dẫn Cài Đặt
+UI/UX Design System
+Roadmap
+
+
+1. Tổng Quan Dự Án
+Relax&Chill là nền tảng web hỗ trợ sức khỏe tinh thần cho Gen Z Việt Nam, cung cấp:
+
+💬 Anonymous Chat: Chat ẩn danh peer-to-peer real-time giữa người dùng
+🤖 AI Emotional Support: Chatbot AI hỗ trợ cảm xúc hoạt động 24/7
+🛡️ Zero Identity: Không yêu cầu đăng ký, không lưu thông tin cá nhân
+🚨 Report System: Báo cáo nội dung tiêu cực, kiểm duyệt cộng đồng
+
+
+2. Tech Stack
+Frontend
+Công cụPhiên bảnMục đíchNext.js14.x (App Router)React framework, SSR/SSGTypeScript5.xType safetyTailwind CSS3.xUtility-first stylingshadcn/uilatestUI component libraryFramer Motion11.xAnimation & transitionsSocket.IO Client4.xReal-time chat (WebSocket)Zustand4.xClient state managementReact Query (TanStack)5.xServer state, cachingAxios1.xHTTP client
+Backend
+Công cụPhiên bảnMục đíchNode.js20.x LTSRuntimeExpress.js4.xREST API frameworkSocket.IO4.xWebSocket server (real-time chat)Prisma ORM5.xDatabase ORM & migrationsJWTjsonwebtoken 9.xSession token (anonymous)bcryptjs2.xHashingZod3.xAPI validationWinston3.xLoggingHelmet7.xHTTP security headersRate Limiterexpress-rate-limit 7.xChống spam/DDoS
+Database
+Công cụMục đíchPostgreSQL 16Database chính (users, messages, reports)Redis 7Session cache, message queue, Socket.IO adapter
+AI Integration
+Công cụMục đíchOpenAI API (GPT-4o-mini)AI emotional support chatbotLangChain.jsPrompt management, conversation memory
+DevOps & Infrastructure
+Công cụMục đíchDockerContainer hóa ứng dụngDocker ComposeOrchestrate multi-container local devNginxReverse proxy, SSL terminationGitHub ActionsCI/CD pipelineVercelFrontend deployment (production)Railway / RenderBackend deployment (production)
+
+3. Kiến Trúc Hệ Thống
+┌─────────────────────────────────────────────────────────┐
+│                      CLIENT BROWSER                      │
+│              Next.js 14 (App Router + SSR)               │
+└──────────────────────┬──────────────────────────────────┘
+                       │ HTTPS / WSS
+┌──────────────────────▼──────────────────────────────────┐
+│                    NGINX Reverse Proxy                    │
+│              (SSL Termination + Load Balance)             │
+└──────────┬───────────────────────────────────┬───────────┘
+           │ REST API (:3001)                  │ WebSocket (:3001)
+┌──────────▼──────────────────────────────────▼───────────┐
+│                   Express.js Backend                      │
+│    ┌─────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│    │ REST Routes │  │ Socket.IO    │  │ AI Service   │  │
+│    │ /api/v1/*   │  │ (Chat Room)  │  │ (OpenAI)     │  │
+│    └──────┬──────┘  └──────┬───────┘  └──────┬───────┘  │
+└───────────┼────────────────┼─────────────────┼──────────┘
+            │                │                 │
+┌───────────▼────────────────▼─────────────────▼──────────┐
+│                     DATA LAYER                            │
+│   ┌──────────────────┐      ┌─────────────────────────┐  │
+│   │  PostgreSQL 16    │      │       Redis 7           │  │
+│   │  (Prisma ORM)    │      │  (Cache + Pub/Sub)      │  │
+│   │                  │      │  (Socket.IO Adapter)    │  │
+│   └──────────────────┘      └─────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+Luồng Real-time Chat (Socket.IO + Redis Pub/Sub)
+User A                Socket.IO Server              User B
+  │──── emit('message') ──▶│                           │
+  │                        │── publish(Redis) ──▶      │
+  │                        │◀── subscribe(Redis) ──    │
+  │                        │──── emit('message') ────▶ │
+
+4. Cấu Trúc Thư Mục
+relax-chill/
+├── 📁 apps/
+│   ├── 📁 web/                          # Next.js Frontend
+│   │   ├── 📁 app/
+│   │   │   ├── 📁 (auth)/
+│   │   │   │   └── layout.tsx
+│   │   │   ├── 📁 chat/
+│   │   │   │   ├── page.tsx             # Chọn mode chat
+│   │   │   │   └── 📁 [roomId]/
+│   │   │   │       └── page.tsx         # Chat room
+│   │   │   ├── 📁 ai/
+│   │   │   │   └── page.tsx             # AI chatbot page
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx                 # Landing page
+│   │   ├── 📁 components/
+│   │   │   ├── 📁 ui/                   # shadcn components
+│   │   │   ├── 📁 chat/
+│   │   │   │   ├── ChatWindow.tsx
+│   │   │   │   ├── MessageBubble.tsx
+│   │   │   │   ├── TypingIndicator.tsx
+│   │   │   │   └── ReportButton.tsx
+│   │   │   ├── 📁 ai/
+│   │   │   │   ├── AIChatbot.tsx
+│   │   │   │   └── MoodSelector.tsx
+│   │   │   └── 📁 layout/
+│   │   │       ├── Navbar.tsx
+│   │   │       └── Footer.tsx
+│   │   ├── 📁 hooks/
+│   │   │   ├── useSocket.ts
+│   │   │   ├── useChat.ts
+│   │   │   └── useAnonymousSession.ts
+│   │   ├── 📁 lib/
+│   │   │   ├── socket.ts
+│   │   │   ├── api.ts
+│   │   │   └── utils.ts
+│   │   ├── 📁 stores/
+│   │   │   └── sessionStore.ts          # Zustand store
+│   │   ├── tailwind.config.ts
+│   │   ├── next.config.ts
+│   │   └── package.json
+│   │
+│   └── 📁 server/                       # Express.js Backend
+│       ├── 📁 src/
+│       │   ├── 📁 routes/
+│       │   │   ├── chat.routes.ts
+│       │   │   ├── ai.routes.ts
+│       │   │   ├── report.routes.ts
+│       │   │   └── health.routes.ts
+│       │   ├── 📁 controllers/
+│       │   │   ├── chat.controller.ts
+│       │   │   ├── ai.controller.ts
+│       │   │   └── report.controller.ts
+│       │   ├── 📁 services/
+│       │   │   ├── chat.service.ts
+│       │   │   ├── ai.service.ts        # OpenAI integration
+│       │   │   ├── matchmaking.service.ts
+│       │   │   └── report.service.ts
+│       │   ├── 📁 socket/
+│       │   │   ├── index.ts             # Socket.IO setup
+│       │   │   ├── chatHandler.ts       # Chat events
+│       │   │   └── matchHandler.ts      # User matching
+│       │   ├── 📁 middleware/
+│       │   │   ├── auth.middleware.ts   # Anonymous JWT
+│       │   │   ├── rateLimit.middleware.ts
+│       │   │   └── validate.middleware.ts
+│       │   ├── 📁 prisma/
+│       │   │   └── schema.prisma
+│       │   ├── 📁 utils/
+│       │   │   ├── logger.ts
+│       │   │   └── redis.ts
+│       │   └── index.ts                 # Entry point
+│       ├── .env.example
+│       └── package.json
+│
+├── 📁 infrastructure/
+│   ├── 📁 docker/
+│   │   ├── Dockerfile.web
+│   │   ├── Dockerfile.server
+│   │   └── nginx.conf
+│   ├── docker-compose.yml               # Local development
+│   └── docker-compose.prod.yml          # Production
+│
+├── 📁 .github/
+│   └── 📁 workflows/
+│       ├── ci.yml                       # Test & lint
+│       └── deploy.yml                   # Auto deploy
+│
+├── package.json                         # Monorepo root (pnpm workspaces)
+├── pnpm-workspace.yaml
+├── turbo.json                           # Turborepo build cache
+└── README.md
+
+5. Database Schema
+prisma// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Anonymous session — KHÔNG lưu thông tin định danh
+model AnonymousSession {
+  id          String   @id @default(uuid())
+  sessionToken String  @unique          // JWT token
+  displayName  String                   // "Anonymous#4821" — random generated
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime                  // TTL 24 giờ
+  isOnline    Boolean  @default(false)
+  
+  messages    Message[]
+  reports     Report[]  @relation("reporter")
+  
+  @@index([sessionToken])
+  @@map("anonymous_sessions")
+}
+
+// Chat Room
+model ChatRoom {
+  id          String   @id @default(uuid())
+  roomType    RoomType @default(PEER)   // PEER | AI
+  status      RoomStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  closedAt    DateTime?
+  
+  messages    Message[]
+  participants ChatParticipant[]
+  
+  @@map("chat_rooms")
+}
+
+// Room participants (max 2 cho peer chat)
+model ChatParticipant {
+  id        String   @id @default(uuid())
+  roomId    String
+  sessionId String
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  
+  @@unique([roomId, sessionId])
+  @@map("chat_participants")
+}
+
+// Messages
+model Message {
+  id          String      @id @default(uuid())
+  roomId      String
+  senderId    String?     // null nếu là AI message
+  senderType  SenderType  @default(USER)  // USER | AI
+  content     String      @db.Text
+  createdAt   DateTime    @default(now())
+  isDeleted   Boolean     @default(false)
+  
+  room        ChatRoom          @relation(fields: [roomId], references: [id])
+  sender      AnonymousSession? @relation(fields: [senderId], references: [id])
+  reports     Report[]
+  
+  @@index([roomId, createdAt])
+  @@map("messages")
+}
+
+// Report System
+model Report {
+  id           String       @id @default(uuid())
+  reporterId   String
+  messageId    String
+  reason       ReportReason
+  description  String?      @db.Text
+  status       ReportStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  resolvedAt   DateTime?
+  
+  reporter     AnonymousSession @relation("reporter", fields: [reporterId], references: [id])
+  message      Message          @relation(fields: [messageId], references: [id])
+  
+  @@map("reports")
+}
+
+// Matchmaking queue
+model MatchQueue {
+  id          String   @id @default(uuid())
+  sessionId   String   @unique
+  waitingSince DateTime @default(now())
+  mood        String?  // optional mood tag
+  
+  @@map("match_queue")
+}
+
+// Enums
+enum RoomType    { PEER AI }
+enum RoomStatus  { ACTIVE CLOSED REPORTED }
+enum SenderType  { USER AI }
+enum ReportReason { HARASSMENT SPAM INAPPROPRIATE OTHER }
+enum ReportStatus { PENDING REVIEWED RESOLVED DISMISSED }
+
+6. API Design
+Base URL: /api/v1
+Anonymous Session
+POST   /api/v1/session/create        → Tạo anonymous session, trả JWT
+GET    /api/v1/session/me            → Lấy thông tin session hiện tại
+DELETE /api/v1/session               → Xóa session (rời nền tảng)
+Chat
+POST   /api/v1/chat/match            → Vào queue tìm bạn chat
+DELETE /api/v1/chat/match            → Rời queue
+POST   /api/v1/chat/ai/start         → Bắt đầu chat với AI
+GET    /api/v1/chat/rooms/:roomId    → Lấy thông tin room
+GET    /api/v1/chat/rooms/:roomId/messages → Lịch sử tin nhắn (pagination)
+DELETE /api/v1/chat/rooms/:roomId    → Đóng chat room
+AI Chatbot
+POST   /api/v1/ai/message            → Gửi tin nhắn, nhận phản hồi AI
+POST   /api/v1/ai/session/reset      → Reset conversation context
+Report
+POST   /api/v1/reports               → Báo cáo tin nhắn
+GET    /api/v1/reports/admin         → [Admin] Xem danh sách reports
+PATCH  /api/v1/reports/:id           → [Admin] Cập nhật trạng thái report
+Socket.IO Events
+Client → Server
+javascriptsocket.emit('chat:join',    { roomId })
+socket.emit('chat:message', { roomId, content })
+socket.emit('chat:typing',  { roomId, isTyping })
+socket.emit('chat:leave',   { roomId })
+Server → Client
+javascriptsocket.on('chat:message',        (message) => {})
+socket.on('chat:partner-joined', (info) => {})
+socket.on('chat:partner-left',   () => {})
+socket.on('chat:typing',         ({ isTyping }) => {})
+socket.on('match:found',         ({ roomId }) => {})
+socket.on('match:waiting',       () => {})
+
+7. Tính Năng & Module
+Module 1: Anonymous Session System
+
+Khi vào web → tự động tạo session UUID + JWT (expire 24h)
+Lưu token vào localStorage phía client
+Mỗi session có display name random: "Mây#4821", "Sao#1204"
+Không thu thập email, SĐT, IP address
+
+Module 2: Matchmaking (Peer Chat)
+
+Người dùng nhấn "Tìm người lắng nghe" → vào queue Redis
+Server poll queue, ghép cặp 2 người → tạo Room UUID
+Redirect cả 2 vào /chat/[roomId]
+Nếu không có người trong 60s → thông báo thử lại
+
+Module 3: Real-time Chat
+
+WebSocket qua Socket.IO
+End-to-end: tin nhắn không lưu nếu cả 2 đều rời room (ephemeral mode)
+Typing indicator ("đang gõ...")
+Đọc tin / chưa đọc
+Tự động đóng room sau 2h không hoạt động
+
+Module 4: AI Emotional Support
+
+Tích hợp OpenAI GPT-4o-mini với system prompt chuyên về lắng nghe
+LangChain.js quản lý conversation memory (max 20 turns)
+Phong cách phản hồi: nhẹ nhàng, không phán xét, khuyến khích
+Rate limit: 30 tin nhắn/giờ (free), 100 tin nhắn/giờ (premium)
+
+Module 5: Content Moderation & Report
+
+Người dùng báo cáo tin nhắn vi phạm
+Admin dashboard xem và xử lý reports
+Auto-detect: tích hợp OpenAI Moderation API (free)
+
+
+8. Bảo Mật & Ẩn Danh
+✅ Không lưu IP address
+✅ Không yêu cầu đăng ký / email
+✅ Session UUID không liên kết với danh tính thật
+✅ HTTPS bắt buộc (HSTS header)
+✅ Helmet.js: X-Frame-Options, CSP, HSTS
+✅ Rate limiting: 100 req/15min per IP
+✅ Input sanitization: DOMPurify (client), Zod (server)
+✅ JWT secret xoay 30 ngày
+✅ Database: không lưu thông tin định danh cá nhân
+✅ Redis cache: TTL tự động xóa dữ liệu cũ
+✅ GDPR-compliant: right to deletion (xóa session = xóa data)
+
+9. Docker & Deployment
+docker-compose.yml (Local Development)
+yamlversion: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: relax_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: relaxchill_db
+      POSTGRES_USER: relaxchill
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - relax_network
+
+  # Redis Cache & Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: relax_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - relax_network
+
+  # Express.js Backend
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: ../../infrastructure/docker/Dockerfile.server
+    container_name: relax_server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://relaxchill:${POSTGRES_PASSWORD}@postgres:5432/relaxchill_db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./apps/server/src:/app/src  # Hot reload
+    networks:
+      - relax_network
+
+  # Next.js Frontend
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: ../../infrastructure/docker/Dockerfile.web
+    container_name: relax_web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_WS_URL: ws://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    volumes:
+      - ./apps/web:/app  # Hot reload
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - relax_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: relax_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+      - server
+    networks:
+      - relax_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  relax_network:
+    driver: bridge
+Dockerfile — Backend (Dockerfile.server)
+dockerfileFROM node:20-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM base AS dev
+RUN npm ci
+COPY . .
+CMD ["npm", "run", "dev"]
+
+FROM base AS production
+COPY . .
+RUN npm run build
+EXPOSE 3001
+CMD ["node", "dist/index.js"]
+Dockerfile — Frontend (Dockerfile.web)
+dockerfileFROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM deps AS builder
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+
+10. Hướng Dẫn Cài Đặt
+Yêu cầu hệ thống
+
+Node.js 20+ LTS
+Docker Desktop 4.x
+pnpm 8.x (npm install -g pnpm)
+
+Bước 1: Clone & cài đặt
+bashgit clone https://github.com/your-org/relax-chill.git
+cd relax-chill
+pnpm install
+Bước 2: Cấu hình môi trường
+bashcp apps/server/.env.example apps/server/.env
+# Điền các giá trị: POSTGRES_PASSWORD, JWT_SECRET, OPENAI_API_KEY, ...
+Bước 3: Chạy với Docker
+bash# Development (hot reload)
+docker-compose up --build
+
+# Chạy migration database
+docker exec relax_server npx prisma migrate dev
+
+# Seed dữ liệu mẫu (optional)
+docker exec relax_server npx prisma db seed
+Bước 4: Truy cập
+
+🌐 Frontend: http://localhost:3000
+🔧 Backend API: http://localhost:3001
+🗄️ Database: postgresql://localhost:5432/relaxchill_db
