@@ -43,7 +43,7 @@ export default function OnboardingPage() {
       const res = await fetch(`${API_URL}/api/v1/chat/session`, { method: 'POST' })
       const data = await res.json()
       const displayName = nickname.trim() || data.displayName
-      localStorage.setItem('rc_session', JSON.stringify({
+      sessionStorage.setItem('rc_session', JSON.stringify({
         displayName,
         token: data.token,
         topics: selectedTopics,

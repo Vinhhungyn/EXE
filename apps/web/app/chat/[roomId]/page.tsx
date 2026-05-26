@@ -71,7 +71,7 @@ export default function ChatRoomPage() {
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const session = typeof window !== 'undefined'
-    ? JSON.parse(localStorage.getItem('rc_session') || '{}')
+  ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
     : {}
 
   const t = THEMES[theme]

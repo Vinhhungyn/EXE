@@ -17,7 +17,7 @@ export default function ChatPage() {
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('rc_session')
+    const stored = sessionStorage.getItem('rc_session')
     if (stored) {
       setSession(JSON.parse(stored))
       setLoading(false)
@@ -26,7 +26,7 @@ export default function ChatPage() {
     fetch(`${API_URL}/api/v1/chat/session`, { method: 'POST' })
       .then(r => r.json())
       .then(data => {
-        localStorage.setItem('rc_session', JSON.stringify({
+        sessionStorage.setItem('rc_session', JSON.stringify({
           displayName: data.displayName,
           token: data.token
         }))
@@ -53,7 +53,7 @@ export default function ChatPage() {
     })
     socketRef.current = socket
 
-    const storedSession = JSON.parse(localStorage.getItem('rc_session') || '{}')
+    const storedSession = JSON.parse(sessionStorage.getItem('rc_session') || '{}')
 
     socket.emit('match:find', {
       displayName: session.displayName,
