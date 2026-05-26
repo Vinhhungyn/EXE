@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { io, Socket } from 'socket.io-client'
+import { API_URL } from '@/lib/config';
 
 export default function ChatPage() {
   const router = useRouter()
@@ -11,8 +12,9 @@ export default function ChatPage() {
   const [countdown, setCountdown] = useState(0)
   const [matched, setMatched] = useState(false)
   const [matchedName, setMatchedName] = useState('')
+  const [matchReason, setMatchReason] = useState('')
   const socketRef = useRef<Socket | null>(null)
-  const countdownRef = useRef<NodeJS.Timeout>()
+  const countdownRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('rc_session')
@@ -21,7 +23,7 @@ export default function ChatPage() {
       setLoading(false)
       return
     }
-    fetch('http://localhost:3001/api/v1/chat/session', { method: 'POST' })
+    fetch(`${API_URL}/api/v1/chat/session`, { method: 'POST' })
       .then(r => r.json())
       .then(data => {
         localStorage.setItem('rc_session', JSON.stringify({
@@ -33,17 +35,30 @@ export default function ChatPage() {
       })
   }, [])
 
+  // ✅ FIX BUG 3 — cleanup socket khi unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current)
+      socketRef.current?.disconnect()
+    }
+  }, [])
+
   const findMatch = () => {
     if (!session) return
     setFinding(true)
     setCountdown(0)
 
-    const socket = io('http://localhost:3001', { transports: ['websocket'] })
+    const socket = io(API_URL, { transports: ['websocket'] })
     socketRef.current = socket
 
-    socket.emit('match:find', { displayName: session.displayName })
+    const storedSession = JSON.parse(localStorage.getItem('rc_session') || '{}')
 
-    // Đếm thời gian chờ
+    socket.emit('match:find', {
+      displayName: session.displayName,
+      topics: storedSession.topics || [],
+      job: storedSession.job || ''
+    })
+
     let secs = 0
     countdownRef.current = setInterval(() => {
       secs++
@@ -52,14 +67,18 @@ export default function ChatPage() {
 
     socket.on('match:waiting', () => console.log('Waiting...'))
 
-    socket.on('match:found', ({ roomId, users }: { roomId: string; users: string[] }) => {
-      clearInterval(countdownRef.current)
+    socket.on('match:found', ({ roomId, users, matchReason }: {
+      roomId: string
+      users: string[]
+      matchReason: string
+    }) => {
+      if (countdownRef.current) clearInterval(countdownRef.current)
       const partner = users.find(u => u !== session.displayName) || 'Người lạ'
       setMatchedName(partner)
+      setMatchReason(matchReason)   // ✅ vẫn set đúng
       setMatched(true)
       setFinding(false)
 
-      // Chuyển trang sau 2s
       setTimeout(() => {
         router.push(`/chat/${roomId}`)
       }, 2000)
@@ -67,7 +86,7 @@ export default function ChatPage() {
   }
 
   const cancelFind = () => {
-    clearInterval(countdownRef.current)
+    if (countdownRef.current) clearInterval(countdownRef.current)
     socketRef.current?.emit('match:cancel')
     socketRef.current?.disconnect()
     setFinding(false)
@@ -83,16 +102,23 @@ export default function ChatPage() {
   return (
     <div style={{minHeight:'100vh', background:'#F8F9FF', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px'}}>
 
-      {/* Match success popup */}
+      {/* ✅ FIX BUG 1 — Hiển thị matchReason trong popup */}
       {matched && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, backdropFilter:'blur(4px)'}}>
           <div style={{background:'white', borderRadius:'24px', padding:'32px 28px', textAlign:'center', maxWidth:'320px', width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)', animation:'popIn 0.3s ease'}}>
             <div style={{fontSize:'48px', marginBottom:'12px'}}>🎉</div>
             <h3 style={{fontFamily:'Nunito, sans-serif', fontSize:'20px', fontWeight:700, color:'#1a2340', marginBottom:'8px'}}>Đã tìm thấy!</h3>
-            <p style={{fontSize:'14px', color:'#8fa0b8', marginBottom:'16px'}}>Kết nối với <strong style={{color:'#7C9EFF'}}>{matchedName}</strong></p>
-            <div style={{display:'flex', gap:'4px', justifyContent:'center'}}>
+            <p style={{fontSize:'14px', color:'#8fa0b8', marginBottom:'8px'}}>
+              Kết nối với <strong style={{color:'#7C9EFF'}}>{matchedName}</strong>
+            </p>
+            {/* ✅ Hiển thị lý do match */}
+            <p style={{fontSize:'12px', color:'#A8D5BA', marginBottom:'16px', background:'rgba(168,213,186,0.1)', padding:'6px 12px', borderRadius:'20px', display:'inline-block'}}>
+              ✨ {matchReason}
+            </p>
+            <div style={{display:'flex', gap:'4px', justifyContent:'center', marginTop:'8px'}}>
+              {/* ✅ FIX BUG 2 — xóa dấu ' thừa trong animationDelay */}
               {[0,1,2].map(i => (
-                <div key={i} style={{width:'8px', height:'8px', borderRadius:'50%', background:'#7C9EFF', animation:'bounce 1s ease infinite', animationDelay:`${i*0.2}s'`}} />
+                <div key={i} style={{width:'8px', height:'8px', borderRadius:'50%', background:'#7C9EFF', animation:'bounce 1s ease infinite', animationDelay:`${i*0.2}s`}} />
               ))}
             </div>
             <p style={{fontSize:'12px', color:'#8fa0b8', marginTop:'12px'}}>Đang vào phòng chat...</p>
@@ -132,21 +158,16 @@ export default function ChatPage() {
           </div>
         ) : (
           <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'16px'}}>
-            {/* Spinner */}
             <div style={{width:'56px', height:'56px', borderRadius:'50%', border:'3px solid rgba(124,158,255,0.2)', borderTop:'3px solid #7C9EFF', animation:'spin 1s linear infinite'}} />
-
             <div>
               <p style={{fontSize:'15px', fontWeight:600, color:'#1a2340', marginBottom:'4px'}}>Đang tìm người tâm sự...</p>
               <p style={{fontSize:'12px', color:'#8fa0b8'}}>Đã chờ {countdown} giây</p>
             </div>
-
-            {/* Tips khi chờ */}
             <div style={{background:'rgba(124,158,255,0.06)', borderRadius:'14px', padding:'12px 16px', width:'100%'}}>
               <p style={{fontSize:'12px', color:'#7C9EFF', fontWeight:500}}>
                 💡 {countdown < 10 ? 'Đang kết nối với người phù hợp...' : countdown < 30 ? 'Vẫn đang tìm, hãy kiên nhẫn nhé!' : 'Mở thêm tab khác để test nhanh hơn 😄'}
               </p>
             </div>
-
             <button onClick={cancelFind}
               style={{fontSize:'13px', color:'#ff6b6b', background:'rgba(255,107,107,0.08)', border:'none', cursor:'pointer', padding:'8px 20px', borderRadius:'20px'}}>
               Huỷ tìm kiếm

@@ -75,7 +75,7 @@ export default function ChatRoomPage() {
   const t = THEMES[theme]
 
   useEffect(() => {
-    const socket = io('http://localhost:3001', { transports: ['websocket'] })
+    const socket = io(API_URL, { transports: ['websocket'] })
     socketRef.current = socket
     socket.emit('join:room', { roomId })
 

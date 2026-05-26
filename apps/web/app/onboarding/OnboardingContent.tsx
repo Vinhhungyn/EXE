@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { API_URL } from '@/lib/config';
 
 const TOPICS = [
   { id: 'love', emoji: '💕', label: 'Tình yêu' },
@@ -39,7 +40,7 @@ export default function OnboardingPage() {
   const handleStart = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3001/api/v1/chat/session', { method: 'POST' })
+      const res = await fetch(`${API_URL}/api/v1/chat/session`, { method: 'POST' })
       const data = await res.json()
       const displayName = nickname.trim() || data.displayName
       localStorage.setItem('rc_session', JSON.stringify({
