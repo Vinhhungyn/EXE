@@ -48,7 +48,9 @@ export default function ChatPage() {
     setFinding(true)
     setCountdown(0)
 
-    const socket = io(API_URL, { transports: ['websocket'] })
+    const socket = io(API_URL, { 
+      transports: ['polling', 'websocket'] 
+    })
     socketRef.current = socket
 
     const storedSession = JSON.parse(localStorage.getItem('rc_session') || '{}')
