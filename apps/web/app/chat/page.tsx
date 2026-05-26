@@ -137,7 +137,9 @@ export default function ChatPage() {
       {/* Card */}
       <div style={{background:'white', borderRadius:'24px', border:'0.5px solid rgba(124,158,255,0.2)', boxShadow:'0 4px 28px rgba(124,158,255,0.1)', padding:'32px 28px', width:'100%', maxWidth:'400px', textAlign:'center'}}>
 
-        <div style={{fontSize:'40px', marginBottom:'12px'}}>🎭</div>
+        <div style={{fontSize:'40px', marginBottom:'12px'}}></div>
+        <img src="/logo.png" alt="logo" style={{height:'40px', width:'40px', borderRadius:'10px'}} />
+        
         <h2 style={{fontFamily:'Nunito, sans-serif', fontSize:'20px', fontWeight:700, color:'#1a2340', marginBottom:'4px'}}>
           Xin chào, <span style={{color:'#7C9EFF'}}>{session?.displayName}</span>
         </h2>

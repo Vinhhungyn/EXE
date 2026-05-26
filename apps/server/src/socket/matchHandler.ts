@@ -6,38 +6,37 @@ interface WaitingUser {
   displayName: string
   topics: string[]
   job: string
+  waitingSince: number
 }
 
 const waitingQueue: WaitingUser[] = []
+const WAIT_TIMEOUT = 60000 // 60 giây chờ cùng chủ đề
 
 const findBestMatch = (user: WaitingUser): number => {
+  const now = Date.now()
   let bestIdx = -1
   let bestScore = -1
 
   waitingQueue.forEach((other, idx) => {
     if (other.socketId === user.socketId) return
 
-    let score = 0
-
-    // Match theo topic
     const commonTopics = user.topics.filter(t => other.topics.includes(t))
-    score += commonTopics.length * 2
+    const commonJob = user.job && other.job && user.job === other.job
+    const waitedLong = (now - other.waitingSince) > WAIT_TIMEOUT
 
-    // Match theo job
-    if (user.job && other.job && user.job === other.job) {
-      score += 1
-    }
+    let score = 0
+    score += commonTopics.length * 10  // ưu tiên chủ đề cao nhất
+    if (commonJob) score += 3
+    if (waitedLong) score += 1  // chờ lâu thì chấp nhận match khác chủ đề
 
-    if (score > bestScore) {
+    // Chỉ match nếu có điểm chung HOẶC đã chờ quá lâu
+    const canMatch = commonTopics.length > 0 || commonJob || waitedLong
+    
+    if (canMatch && score > bestScore) {
       bestScore = score
       bestIdx = idx
     }
   })
-
-  // Nếu không có match tốt thì lấy người đầu tiên trong queue
-  if (bestIdx === -1 && waitingQueue.length > 0) {
-    bestIdx = waitingQueue.findIndex(u => u.socketId !== user.socketId)
-  }
 
   return bestIdx
 }
@@ -48,13 +47,14 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
     topics: string[]
     job: string
   }) => {
-    logger.info(`${displayName} finding match... topics: ${topics} job: ${job}`)
+    logger.info(`${displayName} finding match... topics: ${topics}`)
 
     const user: WaitingUser = {
       socketId: socket.id,
       displayName,
       topics: topics || [],
-      job: job || ''
+      job: job || '',
+      waitingSince: Date.now()
     }
 
     const matchIdx = findBestMatch(user)
@@ -66,10 +66,16 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
       socket.join(roomId)
       io.sockets.sockets.get(partner.socketId)?.join(roomId)
 
-      // Tìm topic chung
       const commonTopics = user.topics.filter(t => partner.topics.includes(t))
       const matchReason = commonTopics.length > 0
-        ? `Cùng quan tâm: ${commonTopics.join(', ')}`
+        ? `Cùng quan tâm: ${commonTopics.map(t => {
+            const labels: Record<string, string> = {
+              love: 'Tình yêu', study: 'Học tập', family: 'Gia đình',
+              money: 'Tài chính', work: 'Công việc', health: 'Sức khỏe',
+              friend: 'Bạn bè', other: 'Khác'
+            }
+            return labels[t] || t
+          }).join(', ')}`
         : 'Kết nối ngẫu nhiên'
 
       io.to(roomId).emit('match:found', {
@@ -82,7 +88,32 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
     } else {
       waitingQueue.push(user)
       socket.emit('match:waiting')
-      logger.info(`${displayName} waiting... queue size: ${waitingQueue.length}`)
+      logger.info(`${displayName} waiting... queue: ${waitingQueue.length}`)
+
+      // Sau 60s thử match lại kể cả khác chủ đề
+      setTimeout(() => {
+        const stillWaiting = waitingQueue.find(u => u.socketId === socket.id)
+        if (!stillWaiting) return
+
+        const anyIdx = waitingQueue.findIndex(u => u.socketId !== socket.id)
+        if (anyIdx !== -1) {
+          const partner = waitingQueue.splice(anyIdx, 1)[0]
+          const myIdx = waitingQueue.findIndex(u => u.socketId === socket.id)
+          if (myIdx !== -1) waitingQueue.splice(myIdx, 1)
+
+          const roomId = `room_${Date.now()}`
+          socket.join(roomId)
+          io.sockets.sockets.get(partner.socketId)?.join(roomId)
+
+          io.to(roomId).emit('match:found', {
+            roomId,
+            users: [displayName, partner.displayName],
+            matchReason: 'Kết nối ngẫu nhiên'
+          })
+
+          logger.info(`Timeout match: ${displayName} <-> ${partner.displayName}`)
+        }
+      }, WAIT_TIMEOUT)
     }
   })
 
