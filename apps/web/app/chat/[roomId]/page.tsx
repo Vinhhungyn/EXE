@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { io, Socket } from 'socket.io-client'
+import { API_URL } from '@/lib/config'
+import { useSocket } from '@/hooks/useSocket'
 
 interface Message {
   id: string
@@ -64,9 +66,9 @@ export default function ChatRoomPage() {
   const [typing, setTyping] = useState(false)
   const [theme, setTheme] = useState<ThemeKey>('soft')
   const [showThemes, setShowThemes] = useState(false)
-  const socketRef = useRef<Socket | null>(null)
+  const socketRef = useRef<Socket | null>(null) 
   const bottomRef = useRef<HTMLDivElement>(null)
-  const typingTimer = useRef<NodeJS.Timeout>()
+  const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const session = typeof window !== 'undefined'
     ? JSON.parse(localStorage.getItem('rc_session') || '{}')
