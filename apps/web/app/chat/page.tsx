@@ -102,7 +102,7 @@ export default function ChatPage() {
   )
 
   return (
-    <div style={{minHeight:'100vh', background:'#F8F9FF', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px'}}>
+    <div style={{minHeight:'100vh', background:'#F8F9FF', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative'}}>
 
       {/* ✅ FIX BUG 1 — Hiển thị matchReason trong popup */}
       {matched && (
@@ -137,13 +137,11 @@ export default function ChatPage() {
       {/* Card */}
       <div style={{background:'white', borderRadius:'24px', border:'0.5px solid rgba(124,158,255,0.2)', boxShadow:'0 4px 28px rgba(124,158,255,0.1)', padding:'32px 28px', width:'100%', maxWidth:'400px', textAlign:'center'}}>
 
-        <div style={{fontSize:'40px', marginBottom:'12px'}}></div>
-        <img src="/logo.png" alt="logo" style={{height:'40px', width:'40px', borderRadius:'10px'}} />
-        
-        <h2 style={{fontFamily:'Nunito, sans-serif', fontSize:'20px', fontWeight:700, color:'#1a2340', marginBottom:'4px'}}>
+        <img src="/logo.png" alt="logo" style={{height:'40px', width:'40px',display:'block', margin:'0 auto', marginBottom:'12px', borderRadius:'10px'}} />
+        <div style={{fontFamily:'Nunito, sans-serif', fontSize:'20px', fontWeight:700, color:'#1a2340', marginBottom:'4px'}}>
           Xin chào, <span style={{color:'#7C9EFF'}}>{session?.displayName}</span>
-        </h2>
-        <p style={{fontSize:'13px', color:'#8fa0b8', marginBottom:'28px'}}>Danh tính ẩn danh của bạn đã sẵn sàng</p>
+        </div>
+        <div style={{fontSize:'13px', color:'#8fa0b8', marginBottom:'28px', textAlign:'left'}}>Danh tính ẩn danh của bạn đã sẵn sàng</div>
 
         {!finding ? (
           <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
@@ -185,6 +183,18 @@ export default function ChatPage() {
         <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#A8D5BA'}} />
         Đang có người online · Ẩn danh hoàn toàn
       </div>
+
+
+      {/* Back button */}{/* Back button */}
+<div style={{position:'absolute', top:'16px', left:'16px'}}>
+  <button onClick={() => router.push('/')}
+    style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'20px', border:'0.5px solid rgba(124,158,255,0.3)', background:'white', color:'#5a6889', fontSize:'12px', cursor:'pointer'}}>
+    ← Trang chủ
+  </button>
+  
+</div>  
+
     </div>
+    
   )
 }
