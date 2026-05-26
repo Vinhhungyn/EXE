@@ -95,7 +95,10 @@ export default function Home() {
 
       <div className="rc-root">
         <nav className="rc-nav">
-          <div className="rc-logo">🌿 relax&chill</div>
+        <div className="rc-logo" style={{display:'flex', alignItems:'center', gap:'8px'}}>
+  <img src="/logo.png" alt="logo" style={{height:'32px', width:'32px', borderRadius:'10px'}} />
+  relax&chill
+</div>
           <div className="rc-nav-links">
             <button className="rc-nav-btn" onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})}>Tính năng</button>
             <button className="rc-nav-btn" onClick={() => document.getElementById('how')?.scrollIntoView({behavior:'smooth'})}>Cách dùng</button>
@@ -206,7 +209,8 @@ export default function Home() {
         </section>
 
         <footer className="rc-footer">
-          <div style={{marginBottom:'8px'}}><strong>🌿 relax&chill</strong> — Không gian an toàn cho Gen Z Việt Nam</div>
+          <div style={{marginBottom:'8px'}}><strong><img src="/logo.png" alt="Relax&Chill" style={{height:'36px', width:'36px', borderRadius:'10px', marginRight:'8px'}} />
+          relax&chill</strong> — Không gian an toàn cho Gen Z Việt Nam</div>
           <div>Được xây dựng bởi <strong>Black Diamond Team</strong> · EXE101-Group04 · FPTU Cần Thơ 2026</div>
           <div style={{marginTop:'6px',fontSize:'11px',opacity:0.7}}>HealthTech · Mental Wellness · Anonymous Platform</div>
         </footer>
