@@ -10,7 +10,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://exe-0kxy.onr
 
 export default function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Xin chào! Tôi là Dr. Chill 🌿 Bạn đang cảm thấy thế nào hôm nay?' }
+    { role: 'assistant', content: 'Xin chào! Mình là Chill 🌿 Hôm nay bạn thế nào, có muốn chia sẻ gì không?' }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -50,8 +50,8 @@ export default function AIChatbot() {
       <div className="bg-green-600 text-white p-4 flex items-center gap-3">
         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-xl">🌿</div>
         <div>
-          <p className="font-bold">Dr. Chill</p>
-          <p className="text-xs text-green-100">Chuyên gia tâm lý AI • Luôn lắng nghe</p>
+        <p className="font-bold">Chill</p>
+        <p className="text-xs text-green-100">Người bạn đồng hành • Luôn lắng nghe</p>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export default function AIChatbot() {
       {/* Input */}
       <div className="p-4 border-t flex gap-2 bg-white">
         <input
-          className="flex-1 border rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-green-400"
+className="flex-1 border rounded-full px-4 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-green-400"
           placeholder="Chia sẻ cảm xúc của bạn..."
           value={input}
           onChange={e => setInput(e.target.value)}

@@ -144,28 +144,28 @@ export default function Home() {
         </section>
 
         <section className="rc-section">
-          <h2 className="rc-section-title">Cảm giác thật sự thế nào?</h2>
-          <p className="rc-section-sub">Một cuộc trò chuyện thực với AI hỗ trợ cảm xúc</p>
-          <div className="rc-chat-demo">
-            <div className="rc-chat-header">
-              <div className="rc-chat-avatar">🤖</div>
-              <div className="rc-chat-info">
-                <h4>Trợ lý cảm xúc</h4>
-                <span><span className="rc-chat-dot"></span>Đang hoạt động</span>
-              </div>
-            </div>
-            <div className="rc-chat-messages">
-              <div className="rc-msg ai"><div className="rc-msg-bubble">Xin chào 🌿 Mình ở đây lắng nghe bạn. Hôm nay bạn đang cảm thấy thế nào?</div><div className="rc-msg-time">Bây giờ</div></div>
-              <div className="rc-msg user"><div className="rc-msg-bubble">Mình cảm thấy áp lực quá, thi cử sắp đến mà chẳng học được gì...</div><div className="rc-msg-time">Vừa xong</div></div>
-              <div className="rc-msg ai"><div className="rc-msg-bubble">Mình hiểu cảm giác đó, ngột ngạt lắm đúng không 💙 Bạn không phải một mình đâu.</div><div className="rc-msg-time">Bây giờ</div></div>
-              <div className="rc-msg ai"><div className="rc-msg-bubble" style={{background:'#F0FAFF'}}><div className="rc-typing"><span></span><span></span><span></span></div></div></div>
-            </div>
-            <div className="rc-chat-input-row">
-              <input className="rc-chat-input" placeholder="Nhập gì đó để chia sẻ..." readOnly />
-              <button className="rc-chat-send" onClick={() => router.push('/onboarding')}>➤</button>
-            </div>
-          </div>
-        </section>
+  <h2 className="rc-section-title">Miễn phí để bắt đầu</h2>
+  <p className="rc-section-sub">Không cần thẻ ngân hàng, không cần cam kết</p>
+  <div className="rc-pricing">
+    <div className="rc-plan">
+      <div className="rc-plan-name">🌱 Free</div>
+      <div className="rc-plan-price"><span className="price">0đ</span><span className="period"> mãi mãi</span></div>
+      <ul className="rc-plan-items">
+        {['Chat ẩn danh với người dùng','AI chatbot cơ bản','30 tin nhắn AI / giờ','Bảo mật & ẩn danh'].map((item,i) => <li key={i}>{item}</li>)}
+      </ul>
+      <button className="rc-plan-btn sec" onClick={() => router.push('/onboarding')}>Bắt đầu miễn phí</button>
+    </div>
+    <div className="rc-plan featured">
+      <div className="rc-plan-badge">✨ Phổ biến nhất</div>
+      <div className="rc-plan-name">🌸 Premium</div>
+      <div className="rc-plan-price"><span className="price">50k</span><span className="period">/tháng</span></div>
+      <ul className="rc-plan-items">
+        {['Tất cả tính năng Free','AI nâng cao (GPT-4)','100 tin nhắn AI / giờ','Không quảng cáo','Mood tracking'].map((item,i) => <li key={i}>{item}</li>)}
+      </ul>
+      <button className="rc-plan-btn main">Nâng cấp Premium ↗</button>
+    </div>
+  </div>
+</section>
 
         <section className="rc-section" id="how">
           <h2 className="rc-section-title">Dùng đơn giản như thế này</h2>
