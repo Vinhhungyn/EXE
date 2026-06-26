@@ -21,7 +21,7 @@ export interface Message {
 
 export const chatWithAI = async (messages: Message[]): Promise<string> => {
   const response = await client.chat.completions.create({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-3.5-flash',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       ...messages
