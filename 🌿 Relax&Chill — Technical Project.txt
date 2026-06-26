@@ -76,6 +76,7 @@ User A                Socket.IO Server              User B
   │                        │──── emit('message') ────▶ │
 
 4. Cấu Trúc Thư Mục
+4. Cấu Trúc Thư Mục
 relax-chill/
 ├── 📁 apps/
 │   ├── 📁 web/                          # Next.js Frontend
