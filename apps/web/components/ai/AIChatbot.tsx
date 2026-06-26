@@ -20,25 +20,45 @@ export default function AIChatbot() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const fetchWithRetry = async (url: string, options: RequestInit, retries = 1): Promise<Response> => {
+    try {
+      const res = await fetch(url, options)
+      if (!res.ok && retries > 0) {
+        await new Promise(r => setTimeout(r, 3000)) // đợi 3s rồi retry
+        return fetchWithRetry(url, options, retries - 1)
+      }
+      return res
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 3000))
+        return fetchWithRetry(url, options, retries - 1)
+      }
+      throw err
+    }
+  }
+  
   const sendMessage = async () => {
     if (!input.trim() || loading) return
-
+  
     const userMsg: Message = { role: 'user', content: input }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
     setLoading(true)
-
+  
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/ai/message`, {
+      const res = await fetchWithRetry(`${BACKEND_URL}/api/v1/ai/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages })
-      })
+      }, 1) // thử lại 1 lần nếu fail
+  
+      if (!res.ok) throw new Error('Server error')
+  
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, có lỗi xảy ra. Thử lại nhé!' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Server đang khởi động lại, bạn thử gửi lại tin nhắn nhé! 🌿' }])
     } finally {
       setLoading(false)
     }
