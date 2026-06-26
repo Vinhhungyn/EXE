@@ -1,0 +1,20 @@
+cd D:\exe\relax-chill
+docker-compose up -d
+Terminal 2:
+powershellcd D:\exe\relax-chill\apps\server
+npx ts-node-dev --respawn src/index.ts
+
+
+Terminal 3:
+powershellcd D:\exe\relax-chill\apps\web
+npm run dev
+
+Kiểm tra database đã có tables chưa:
+powershellnpx prisma studio
+Lệnh này mở trình duyệt tại http://localhost:5555
+
+
+sua ben code BE
+Railway chưa deploy code mới! Cần redeploy thủ công:
+powershellcd D:\exe\relax-chill
+npx @railway/cli up

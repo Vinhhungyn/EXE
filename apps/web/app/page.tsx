@@ -214,6 +214,9 @@ export default function Home() {
           <div>Được xây dựng bởi <strong>Black Diamond Team</strong> · EXE101-Group04 · FPTU Cần Thơ 2026</div>
           <div style={{marginTop:'6px',fontSize:'11px',opacity:0.7}}>HealthTech · Mental Wellness · Anonymous Platform</div>
         </footer>
+
+
+  
       </div>
     </>
   )
