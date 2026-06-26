@@ -10,7 +10,7 @@ import healthRouter from './routes/health.routes'
 import chatRouter from './routes/chat.routes'
 import { globalRateLimit } from './middleware/rateLimit.middleware'
 import { initSocket } from './socket/index'
-
+import aiRouter from './routes/ai.routes'
 dotenv.config()
 
 // ✅ Danh sách domain được phép
@@ -42,6 +42,7 @@ app.use(globalRateLimit)
 
 app.use('/health', healthRouter)
 app.use('/api/v1/chat', chatRouter)
+app.use('/api/v1/ai', aiRouter)
 
 initSocket(io)
 
