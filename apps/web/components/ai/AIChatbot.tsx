@@ -6,7 +6,7 @@ interface Message {
   content: string
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://exe-production-af42.up.railway.app'
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://exe-0kxy.onrender.com'
 
 export default function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([
