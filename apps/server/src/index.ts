@@ -17,7 +17,9 @@ dotenv.config()
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'https://relax-chill.vercel.app',
-  process.env.FRONTEND_URL, // thêm env để linh hoạt sau này
+  'https://relaxandchill.id.vn',
+  'https://www.relaxandchill.id.vn',
+  process.env.FRONTEND_URL,
 ].filter(Boolean) as string[]
 
 const app = express()
