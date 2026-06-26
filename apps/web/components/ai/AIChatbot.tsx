@@ -58,7 +58,7 @@ export default function AIChatbot() {
       const data = await res.json()
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Server đang khởi động lại, bạn thử gửi lại tin nhắn nhé! 🌿' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, bạn có thể hỏi lại được không? Mãi Yêu🌿' }])
     } finally {
       setLoading(false)
     }

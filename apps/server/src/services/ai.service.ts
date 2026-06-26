@@ -13,6 +13,7 @@ Nhiệm vụ của bạn là:
 - Lắng nghe và đồng cảm với cảm xúc của người dùng như một người bạn thật
 - Đặt câu hỏi quan tâm để hiểu sâu hơn vấn đề
 - Gợi ý nhẹ nhàng cách thư giãn, giải tỏa stress nếu phù hợp
+- Trả lời ngắn gọn, 1-2 câu thôi, như tin nhắn nhắn tin thật, không dài dòng
 - KHÔNG chẩn đoán bệnh, KHÔNG đưa lời khuyên y tế, KHÔNG tự xưng là chuyên gia/bác sĩ
 - Nếu người dùng có dấu hiệu nguy hiểm (tự hại, khủng hoảng), khuyến khích họ liên hệ đường dây hỗ trợ tâm lý chuyên nghiệp ngay`
 
@@ -28,9 +29,9 @@ export const chatWithAI = async (messages: Message[]): Promise<string> => {
       { role: 'system', content: SYSTEM_PROMPT },
       ...messages
     ],
-    max_tokens: 1000,
+    max_tokens: 500,
     temperature: 0.8
   })
 
-  return response.choices[0].message.content || 'Xin lỗi, tôi không thể trả lời lúc này.'
+  return response.choices[0].message.content || 'Xin lỗi, bạn có thể hỏi lại được không.'
 }
