@@ -49,10 +49,13 @@ initSocket(io)
 const PORT = process.env.PORT || 3001
 
 const start = async () => {
-  await connectRedis()
   httpServer.listen(PORT, () => {
     logger.info(`🌿 Server running on port ${PORT}`)
     logger.info(`✅ Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`)
+  })
+
+  connectRedis().catch((err) => {
+    logger.error('❌ Redis connect failed: ' + err)
   })
 }
 
