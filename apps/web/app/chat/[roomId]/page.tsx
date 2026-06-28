@@ -18,6 +18,12 @@ interface Message {
 
 const REACTION_EMOJIS = ['❤️', '😂', '😢', '😮', '👍', '🙏']
 
+const CHECKIN_OPTIONS = [
+  { key: 'lighter', emoji: '😊', label: 'Nhẹ hơn' },
+  { key: 'same', emoji: '😐', label: 'Bình thường' },
+  { key: 'still_hard', emoji: '😔', label: 'Vẫn khó' },
+] as const
+
 const THEMES = {
   soft: {
     name: '🌿 Nhẹ nhàng',
@@ -131,6 +137,56 @@ function ReactionPicker({ theme, onPick, onClose }: { theme: ThemeKey; onPick: (
   )
 }
 
+function CheckinModal({ theme, onPick, onSkip }: { theme: ThemeKey; onPick: (key: typeof CHECKIN_OPTIONS[number]['key']) => void; onSkip: () => void }) {
+  const t = THEMES[theme]
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white',
+        borderRadius: '24px', padding: '28px 24px', textAlign: 'center',
+        border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease',
+      }}>
+        <div style={{ fontSize: '40px', marginBottom: '12px' }}>🌿</div>
+        <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '6px' }}>
+          Bạn cảm thấy thế nào sau cuộc trò chuyện?
+        </h2>
+        <p style={{ fontSize: '12px', color: t.dot, marginBottom: '20px' }}>Chia sẻ giúp mình hiểu bạn hơn</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {CHECKIN_OPTIONS.map(opt => (
+            <button key={opt.key} onClick={() => onPick(opt.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                borderRadius: '16px', border: `0.5px solid ${t.border}`,
+                background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF',
+                color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '14px', fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+              <span style={{ fontSize: '22px' }}>{opt.emoji}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={onSkip} style={{ marginTop: '16px', background: 'none', border: 'none', color: t.dot, fontSize: '12px', cursor: 'pointer' }}>
+          Bỏ qua
+        </button>
+      </div>
+      <style>{`@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+    </div>
+  )
+}
+
+type CheckinEntry = {
+  date: string
+  key: typeof CHECKIN_OPTIONS[number]['key']
+  label: string
+  emoji: string
+}
+
 export default function ChatRoomPage() {
   const { roomId } = useParams()
   const router = useRouter()
@@ -142,6 +198,7 @@ export default function ChatRoomPage() {
   const [showThemes, setShowThemes] = useState(false)
   const [pickerFor, setPickerFor] = useState<string | null>(null)
   const [reactions, setReactions] = useState<Record<string, { emoji: string; displayName: string }[]>>({})
+  const [showCheckin, setShowCheckin] = useState(false)
   const socketRef = useRef<Socket | null>(null) 
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -210,6 +267,32 @@ export default function ChatRoomPage() {
 
   const leaveRoom = () => {
     socketRef.current?.emit('chat:leave', { roomId })
+    // Chỉ hỏi checkin nếu đã thực sự trò chuyện (có ít nhất 1 tin nhắn)
+    if (messages.length > 0) {
+      setShowCheckin(true)
+    } else {
+      router.push('/chat')
+    }
+  }
+
+  const finishLeaving = (key?: typeof CHECKIN_OPTIONS[number]['key']) => {
+    if (key) {
+      const opt = CHECKIN_OPTIONS.find(o => o.key === key)!
+      const entry: CheckinEntry = {
+        date: new Date().toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' }),
+        key: opt.key,
+        label: opt.label,
+        emoji: opt.emoji,
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('rc_checkin_history') || '[]')
+        const updated = [entry, ...stored].slice(0, 50)
+        localStorage.setItem('rc_checkin_history', JSON.stringify(updated))
+      } catch {
+        localStorage.setItem('rc_checkin_history', JSON.stringify([entry]))
+      }
+    }
+    setShowCheckin(false)
     router.push('/chat')
   }
 
@@ -408,6 +491,10 @@ export default function ChatRoomPage() {
           )}
         </div>
       </div>
+
+      {showCheckin && (
+        <CheckinModal theme={theme} onPick={key => finishLeaving(key)} onSkip={() => finishLeaving()} />
+      )}
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
