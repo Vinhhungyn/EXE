@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { addTrustPoints } from '@/hooks/useTrustBadge'
 
 const MOODS = [
   { emoji: '😊', label: 'Vui vẻ', color: '#A8D5BA', bg: 'rgba(168,213,186,0.15)' },
@@ -41,6 +42,7 @@ export default function MoodPage() {
     const updated = [entry, ...history].slice(0, 30)
     setHistory(updated)
     localStorage.setItem('rc_mood_history', JSON.stringify(updated))
+    addTrustPoints('mood_checkin')
     setSaved(true)
   }
 
