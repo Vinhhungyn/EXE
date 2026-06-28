@@ -16,6 +16,8 @@ interface Message {
   duration?: number | null
 }
 
+const REACTION_EMOJIS = ['❤️', '😂', '😢', '😮', '👍', '🙏']
+
 const THEMES = {
   soft: {
     name: '🌿 Nhẹ nhàng',
@@ -106,6 +108,29 @@ function VoiceBubble({ audioData, duration, isSelf, theme }: { audioData: string
   )
 }
 
+function ReactionPicker({ theme, onPick, onClose }: { theme: ThemeKey; onPick: (emoji: string) => void; onClose: () => void }) {
+  const t = THEMES[theme]
+  return (
+    <div
+      onMouseLeave={onClose}
+      style={{
+        position: 'absolute', bottom: '100%', marginBottom: '6px', left: 0,
+        display: 'flex', gap: '4px', padding: '6px 8px', borderRadius: '20px',
+        background: theme === 'cool' ? '#1A1D27' : 'white',
+        border: `0.5px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.15)', zIndex: 5,
+      }}>
+      {REACTION_EMOJIS.map(e => (
+        <button key={e} onClick={() => onPick(e)}
+          style={{ background: 'none', border: 'none', fontSize: '17px', cursor: 'pointer', padding: '2px', borderRadius: '8px', transition: 'transform 0.1s' }}
+          onMouseEnter={ev => (ev.currentTarget.style.transform = 'scale(1.3)')}
+          onMouseLeave={ev => (ev.currentTarget.style.transform = 'scale(1)')}>
+          {e}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function ChatRoomPage() {
   const { roomId } = useParams()
   const router = useRouter()
@@ -115,6 +140,8 @@ export default function ChatRoomPage() {
   const [typing, setTyping] = useState(false)
   const [theme, setTheme] = useState<ThemeKey>('soft')
   const [showThemes, setShowThemes] = useState(false)
+  const [pickerFor, setPickerFor] = useState<string | null>(null)
+  const [reactions, setReactions] = useState<Record<string, { emoji: string; displayName: string }[]>>({})
   const socketRef = useRef<Socket | null>(null) 
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -146,6 +173,15 @@ export default function ChatRoomPage() {
       setTyping(true)
       clearTimeout(typingTimer.current)
       typingTimer.current = setTimeout(() => setTyping(false), 2000)
+    })
+
+    socket.on('chat:reaction', ({ messageId, emoji, displayName }: { messageId: string; emoji: string; displayName: string }) => {
+      setReactions(prev => {
+        const existing = prev[messageId] ?? []
+        // Mỗi người chỉ giữ 1 reaction gần nhất trên 1 message
+        const withoutThisUser = existing.filter(r => r.displayName !== displayName)
+        return { ...prev, [messageId]: [...withoutThisUser, { emoji, displayName }] }
+      })
     })
 
     socket.on('chat:partner_left', () => setPartnerLeft(true))
@@ -196,6 +232,16 @@ export default function ChatRoomPage() {
     })
   }
 
+  const handleReact = (messageId: string, emoji: string) => {
+    socketRef.current?.emit('chat:reaction', { roomId, messageId, emoji, displayName: session.displayName })
+    setReactions(prev => {
+      const existing = prev[messageId] ?? []
+      const withoutMe = existing.filter(r => r.displayName !== session.displayName)
+      return { ...prev, [messageId]: [...withoutMe, { emoji, displayName: session.displayName }] }
+    })
+    setPickerFor(null)
+  }
+
   return (
     <div style={{minHeight:'100vh', background:t.bg, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px', transition:'all 0.3s'}}>
       <div style={{width:'100%', maxWidth:'480px', background:t.card, borderRadius:'24px', border:`0.5px solid ${t.border}`, boxShadow:'0 4px 28px rgba(0,0,0,0.08)', display:'flex', flexDirection:'column', height:'88vh', transition:'all 0.3s'}}>
@@ -244,17 +290,49 @@ export default function ChatRoomPage() {
               Bắt đầu cuộc trò chuyện 🌿
             </div>
           )}
-          {messages.map(msg => (
-            <div key={msg.id} style={{display:'flex', justifyContent: msg.isSelf ? 'flex-end' : 'flex-start'}}>
-              <div style={{maxWidth:'75%', padding: msg.type === 'voice' ? '10px 12px' : '10px 14px', borderRadius:'18px', fontSize:'13px', lineHeight:1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px'}}>
-                {msg.type === 'voice' && msg.audioData ? (
-                  <VoiceBubble audioData={msg.audioData} duration={msg.duration ?? null} isSelf={msg.isSelf} theme={theme} />
-                ) : (
-                  msg.message
+          {messages.map(msg => {
+            const msgReactions = reactions[msg.id] ?? []
+            return (
+              <div key={msg.id} style={{display:'flex', flexDirection:'column', alignItems: msg.isSelf ? 'flex-end' : 'flex-start', gap:'3px'}}>
+                <div
+                  style={{position:'relative', display:'flex', alignItems:'center', gap:'4px', flexDirection: msg.isSelf ? 'row-reverse' : 'row'}}
+                  onMouseEnter={() => {}}
+                >
+                  <div style={{maxWidth:'320px', padding: msg.type === 'voice' ? '10px 12px' : '10px 14px', borderRadius:'18px', fontSize:'13px', lineHeight:1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px'}}>
+                    {msg.type === 'voice' && msg.audioData ? (
+                      <VoiceBubble audioData={msg.audioData} duration={msg.duration ?? null} isSelf={msg.isSelf} theme={theme} />
+                    ) : (
+                      msg.message
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setPickerFor(pickerFor === msg.id ? null : msg.id)}
+                    style={{
+                      width: '22px', height: '22px', borderRadius: '50%', border: `0.5px solid ${t.border}`,
+                      background: theme === 'cool' ? '#1A1D27' : 'white', color: t.dot, fontSize: '11px',
+                      cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: 0.7,
+                    }}
+                    title="Thêm reaction">
+                    +
+                  </button>
+                  {pickerFor === msg.id && (
+                    <ReactionPicker theme={theme} onPick={emoji => handleReact(msg.id, emoji)} onClose={() => setPickerFor(null)} />
+                  )}
+                </div>
+                {msgReactions.length > 0 && (
+                  <div style={{display:'flex', gap:'3px', flexWrap:'wrap', maxWidth:'200px'}}>
+                    {msgReactions.map((r, i) => (
+                      <span key={i} title={r.displayName}
+                        style={{fontSize:'12px', background: theme === 'cool' ? 'rgba(255,255,255,0.06)' : 'rgba(124,158,255,0.08)', borderRadius:'10px', padding:'2px 6px', border:`0.5px solid ${t.border}`}}>
+                        {r.emoji}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
           {typing && (
             <div style={{display:'flex', justifyContent:'flex-start'}}>
               <div style={{background:t.msgOther, padding:'10px 14px', borderRadius:'18px', borderBottomLeftRadius:'4px', display:'flex', gap:'4px', alignItems:'center'}}>
