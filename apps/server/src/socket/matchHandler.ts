@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { logger } from '../utils/logger'
+import { incrTotalUsers, incrChatSessionsToday, trackRecentUser } from '../utils/analytics'
 
 interface WaitingUser {
   socketId: string
@@ -49,6 +50,10 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
   }) => {
     logger.info(`${displayName} finding match... topics: ${topics}`)
 
+    // Mỗi lượt tìm match là một người dùng ẩn danh hoạt động -> đếm vào tổng
+    incrTotalUsers()
+    trackRecentUser({ name: displayName, joinedAt: new Date().toISOString(), mode: 'Người dùng' })
+
     const user: WaitingUser = {
       socketId: socket.id,
       displayName,
@@ -65,6 +70,8 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
 
       socket.join(roomId)
       io.sockets.sockets.get(partner.socketId)?.join(roomId)
+
+      incrChatSessionsToday()
 
       const commonTopics = user.topics.filter(t => partner.topics.includes(t))
       const matchReason = commonTopics.length > 0
@@ -104,6 +111,8 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
           const roomId = `room_${Date.now()}`
           socket.join(roomId)
           io.sockets.sockets.get(partner.socketId)?.join(roomId)
+
+          incrChatSessionsToday()
 
           io.to(roomId).emit('match:found', {
             roomId,
