@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { io, Socket } from 'socket.io-client'
 import { API_URL } from '@/lib/config'
-import { useSocket } from '@/hooks/useSocket'
+import { useVoiceRecorder, blobToBase64 } from '@/hooks/useVoiceRecorder'
 
 interface Message {
   id: string
@@ -11,6 +11,9 @@ interface Message {
   displayName: string
   timestamp: string
   isSelf: boolean
+  type?: 'text' | 'voice'
+  audioData?: string | null
+  duration?: number | null
 }
 
 const THEMES = {
@@ -57,6 +60,52 @@ const THEMES = {
 
 type ThemeKey = keyof typeof THEMES
 
+function VoiceBubble({ audioData, duration, isSelf, theme }: { audioData: string; duration: number | null; isSelf: boolean; theme: ThemeKey }) {
+  const t = THEMES[theme]
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  const toggle = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) {
+      audio.pause()
+    } else {
+      audio.play()
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '160px' }}>
+      <audio
+        ref={audioRef}
+        src={audioData}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); setProgress(0) }}
+        onTimeUpdate={e => {
+          const el = e.currentTarget
+          if (el.duration) setProgress(el.currentTime / el.duration)
+        }}
+      />
+      <button
+        onClick={toggle}
+        style={{
+          width: '30px', height: '30px', borderRadius: '50%', border: 'none', flexShrink: 0,
+          background: isSelf ? 'rgba(255,255,255,0.25)' : t.send,
+          color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'
+        }}>
+        {playing ? '⏸' : '▶'}
+      </button>
+      <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: isSelf ? 'rgba(255,255,255,0.3)' : 'rgba(124,158,255,0.2)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${progress * 100}%`, background: isSelf ? 'white' : t.send, transition: 'width 0.1s linear' }} />
+      </div>
+      <span style={{ fontSize: '11px', opacity: 0.85, flexShrink: 0 }}>🎙️ {duration ? `${Math.ceil(duration / 1000)}s` : ''}</span>
+    </div>
+  )
+}
+
 export default function ChatRoomPage() {
   const { roomId } = useParams()
   const router = useRouter()
@@ -69,6 +118,11 @@ export default function ChatRoomPage() {
   const socketRef = useRef<Socket | null>(null) 
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  const {
+    isRecording, isProcessing, elapsedMs, maxDurationMs, error: recError,
+    startRecording, stopRecording, cancelRecording,
+  } = useVoiceRecorder()
 
   const session = typeof window !== 'undefined'
   ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
@@ -108,7 +162,8 @@ export default function ChatRoomPage() {
     socketRef.current.emit('chat:message', {
       roomId,
       message: input.trim(),
-      displayName: session.displayName
+      displayName: session.displayName,
+      type: 'text',
     })
     setInput('')
   }
@@ -120,6 +175,25 @@ export default function ChatRoomPage() {
   const leaveRoom = () => {
     socketRef.current?.emit('chat:leave', { roomId })
     router.push('/chat')
+  }
+
+  const handleMicDown = () => {
+    startRecording()
+  }
+
+  const handleMicUp = async () => {
+    if (!isRecording) return
+    const result = await stopRecording()
+    if (!result || !socketRef.current) return
+    const audioData = await blobToBase64(result.blob)
+    socketRef.current.emit('chat:message', {
+      roomId,
+      message: '🎙️ Voice note',
+      displayName: session.displayName,
+      type: 'voice',
+      audioData,
+      duration: result.durationMs,
+    })
   }
 
   return (
@@ -172,8 +246,12 @@ export default function ChatRoomPage() {
           )}
           {messages.map(msg => (
             <div key={msg.id} style={{display:'flex', justifyContent: msg.isSelf ? 'flex-end' : 'flex-start'}}>
-              <div style={{maxWidth:'75%', padding:'10px 14px', borderRadius:'18px', fontSize:'13px', lineHeight:1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px'}}>
-                {msg.message}
+              <div style={{maxWidth:'75%', padding: msg.type === 'voice' ? '10px 12px' : '10px 14px', borderRadius:'18px', fontSize:'13px', lineHeight:1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px'}}>
+                {msg.type === 'voice' && msg.audioData ? (
+                  <VoiceBubble audioData={msg.audioData} duration={msg.duration ?? null} isSelf={msg.isSelf} theme={theme} />
+                ) : (
+                  msg.message
+                )}
               </div>
             </div>
           ))}
@@ -196,37 +274,66 @@ export default function ChatRoomPage() {
 
         {/* Input */}
         <div style={{padding:'12px 16px', borderTop:`0.5px solid ${t.border}`, display:'flex', flexDirection:'column', gap:'8px'}}>
-          {/* Emoji bar */}
-          <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
-            {['😊','😢','😅','🥺','❤️','💙','🌿','✨','😭','🤗','😤','💪','🙏','😴','🫂','👋'].map(emoji => (
-              <button key={emoji} onClick={() => setInput(prev => prev + emoji)}
-                style={{fontSize:'18px', background:'none', border:'none', cursor:'pointer', padding:'2px 4px', borderRadius:'8px', flexShrink:0, transition:'transform 0.1s'}}
-                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.3)')}
-                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
-                {emoji}
-              </button>
-            ))}
-          </div>
+          {recError && (
+            <div style={{fontSize:'11px', color:'#ef4444', textAlign:'center'}}>{recError}</div>
+          )}
 
-          {/* Input row */}
-          <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-            <input
-              value={input}
-              onChange={e => { setInput(e.target.value); handleTyping() }}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
-              placeholder="Nhập tin nhắn..."
-              style={{flex:1, padding:'10px 16px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:t.input, fontSize:'13px', color: theme === 'cool' ? '#c0c8e8' : '#2D3748', outline:'none', transition:'all 0.3s'}}
-            />
-            <button onClick={sendMessage} disabled={!input.trim()}
-              style={{width:'38px', height:'38px', borderRadius:'50%', border:'none', background: input.trim() ? t.send : '#e0e4f0', color:'white', cursor: input.trim() ? 'pointer' : 'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', transition:'all 0.2s'}}>
-              ➤
-            </button>
-          </div>
+          {isRecording ? (
+            /* Recording UI */
+            <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', borderRadius:'20px', background: theme === 'cool' ? '#252836' : '#FEF2F2'}}>
+              <span style={{width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', flexShrink:0, animation:'pulse 1s ease infinite'}} />
+              <div style={{flex:1, height:'4px', borderRadius:'4px', background:'rgba(239,68,68,0.2)', overflow:'hidden'}}>
+                <div style={{height:'100%', width:`${Math.min(100, (elapsedMs / maxDurationMs) * 100)}%`, background:'#ef4444', transition:'width 0.1s linear'}} />
+              </div>
+              <span style={{fontSize:'12px', color:'#ef4444', fontWeight:600, flexShrink:0}}>{Math.ceil(elapsedMs / 1000)}s / 30s</span>
+              <button onClick={cancelRecording} style={{background:'none', border:'none', color:'#ef4444', fontSize:'12px', cursor:'pointer', flexShrink:0}}>Hủy</button>
+              <button onClick={handleMicUp}
+                style={{width:'32px', height:'32px', borderRadius:'50%', border:'none', background:'#ef4444', color:'white', cursor:'pointer', flexShrink:0, fontSize:'13px'}}>
+                ✓
+              </button>
+            </div>
+          ) : isProcessing ? (
+            <div style={{textAlign:'center', fontSize:'12px', color:t.dot, padding:'8px'}}>🎚️ Đang đổi giọng ẩn danh...</div>
+          ) : (
+            <>
+              {/* Emoji bar */}
+              <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
+                {['😊','😢','😅','🥺','❤️','💙','🌿','✨','😭','🤗','😤','💪','🙏','😴','🫂','👋'].map(emoji => (
+                  <button key={emoji} onClick={() => setInput(prev => prev + emoji)}
+                    style={{fontSize:'18px', background:'none', border:'none', cursor:'pointer', padding:'2px 4px', borderRadius:'8px', flexShrink:0, transition:'transform 0.1s'}}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.3)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input row */}
+              <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                <button onClick={handleMicDown} title="Ghi voice note ẩn danh (giữ tối đa 30s)"
+                  style={{width:'38px', height:'38px', borderRadius:'50%', border:`0.5px solid ${t.border}`, background:'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'15px', flexShrink:0}}>
+                  🎙️
+                </button>
+                <input
+                  value={input}
+                  onChange={e => { setInput(e.target.value); handleTyping() }}
+                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                  placeholder="Nhập tin nhắn..."
+                  style={{flex:1, padding:'10px 16px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:t.input, fontSize:'13px', color: theme === 'cool' ? '#c0c8e8' : '#2D3748', outline:'none', transition:'all 0.3s'}}
+                />
+                <button onClick={sendMessage} disabled={!input.trim()}
+                  style={{width:'38px', height:'38px', borderRadius:'50%', border:'none', background: input.trim() ? t.send : '#e0e4f0', color:'white', cursor: input.trim() ? 'pointer' : 'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', transition:'all 0.2s', flexShrink:0}}>
+                  ➤
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
     </div>
   )
