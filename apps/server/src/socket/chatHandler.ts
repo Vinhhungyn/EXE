@@ -8,16 +8,22 @@ export const registerChatHandler = (io: Server, socket: Socket) => {
     logger.info(`${socket.id} joined room ${roomId}`)
   })
 
-  socket.on('chat:message', ({ roomId, message, displayName }: {
+  socket.on('chat:message', ({ roomId, message, displayName, type, audioData, duration }: {
     roomId: string
     message: string
     displayName: string
+    type?: 'text' | 'voice'
+    audioData?: string
+    duration?: number
   }) => {
-    logger.info(`[${roomId}] ${displayName}: ${message}`)
+    logger.info(`[${roomId}] ${displayName}: ${type === 'voice' ? '[voice note]' : message}`)
     io.to(roomId).emit('chat:message', {
       id: Date.now().toString(),
       message,
       displayName,
+      type: type ?? 'text',
+      audioData: audioData ?? null,
+      duration: duration ?? null,
       timestamp: new Date().toISOString(),
       isSelf: false
     })
