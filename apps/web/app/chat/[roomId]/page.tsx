@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { io, Socket } from 'socket.io-client'
 import { API_URL } from '@/lib/config'
 import { useVoiceRecorder, blobToBase64 } from '@/hooks/useVoiceRecorder'
+import { addTrustPoints } from '@/hooks/useTrustBadge'
 
 interface Message {
   id: string
@@ -276,6 +277,8 @@ export default function ChatRoomPage() {
   }
 
   const finishLeaving = (key?: typeof CHECKIN_OPTIONS[number]['key']) => {
+    // Hoàn thành một cuộc trò chuyện có ý nghĩa -> cộng điểm tin cậy ẩn danh
+    addTrustPoints('chat_completed')
     if (key) {
       const opt = CHECKIN_OPTIONS.find(o => o.key === key)!
       const entry: CheckinEntry = {
@@ -291,6 +294,7 @@ export default function ChatRoomPage() {
       } catch {
         localStorage.setItem('rc_checkin_history', JSON.stringify([entry]))
       }
+      addTrustPoints('end_checkin')
     }
     setShowCheckin(false)
     router.push('/chat')
@@ -313,6 +317,7 @@ export default function ChatRoomPage() {
       audioData,
       duration: result.durationMs,
     })
+    addTrustPoints('voice_note_sent')
   }
 
   const handleReact = (messageId: string, emoji: string) => {
