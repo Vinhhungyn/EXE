@@ -33,6 +33,16 @@ export const registerChatHandler = (io: Server, socket: Socket) => {
     socket.to(roomId).emit('chat:typing', { displayName })
   })
 
+  socket.on('chat:reaction', ({ roomId, messageId, emoji, displayName }: {
+    roomId: string
+    messageId: string
+    emoji: string
+    displayName: string
+  }) => {
+    logger.info(`[${roomId}] ${displayName} reacted ${emoji} to ${messageId}`)
+    io.to(roomId).emit('chat:reaction', { messageId, emoji, displayName })
+  })
+
   socket.on('chat:leave', ({ roomId }: { roomId: string }) => {
     socket.to(roomId).emit('chat:partner_left')
     socket.leave(roomId)
