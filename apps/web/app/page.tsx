@@ -1,8 +1,10 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { useTrustBadge, TRUST_BADGES } from '@/hooks/useTrustBadge'
 
 export default function Home() {
   const router = useRouter()
+  const { points, badge, next, progress, loaded } = useTrustBadge()
 
   return (
     <>
@@ -74,21 +76,19 @@ export default function Home() {
         .rc-step-num { min-width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #7C9EFF, #A8D5BA); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
         .rc-step-content h4 { font-size: 14px; font-weight: 600; color: #1a2340; margin-bottom: 4px; }
         .rc-step-content p { font-size: 12.5px; color: #6b7a9a; line-height: 1.5; }
-        .rc-pricing { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .rc-plan { background: white; border-radius: 18px; padding: 22px; border: 0.5px solid rgba(124,158,255,0.2); box-shadow: 0 2px 14px rgba(0,0,0,0.04); }
-        .rc-plan.featured { border: 1.5px solid rgba(124,158,255,0.5); box-shadow: 0 6px 24px rgba(124,158,255,0.15); position: relative; }
-        .rc-plan-badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #7C9EFF, #9BB8FF); color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-        .rc-plan-name { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; color: #1a2340; margin-bottom: 4px; }
-        .rc-plan-price { margin: 10px 0 14px; }
-        .rc-plan-price .price { font-size: 26px; font-weight: 700; color: #7C9EFF; }
-        .rc-plan-price .period { font-size: 12px; color: #8fa0b8; margin-left: 2px; }
-        .rc-plan-items { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
-        .rc-plan-items li { font-size: 12.5px; color: #4a5a78; display: flex; align-items: center; gap: 7px; }
-        .rc-plan-items li::before { content: "✓"; color: #A8D5BA; font-weight: 700; font-size: 13px; }
-        .rc-plan-btn { width: 100%; padding: 9px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; }
-        .rc-plan-btn.main { background: linear-gradient(135deg, #7C9EFF, #9BB8FF); color: white; }
-        .rc-plan-btn.sec { background: #F0F4FF; color: #5a7de8; }
-        .rc-plan-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .rc-badge-card { background: white; border-radius: 20px; border: 0.5px solid rgba(124,158,255,0.2); box-shadow: 0 4px 24px rgba(124,158,255,0.1); padding: 28px; max-width: 420px; margin: 0 auto; text-align: center; }
+        .rc-badge-emoji { font-size: 48px; margin-bottom: 8px; }
+        .rc-badge-label { font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 700; color: #1a2340; margin-bottom: 4px; }
+        .rc-badge-desc { font-size: 12.5px; color: #6b7a9a; margin-bottom: 18px; }
+        .rc-badge-bar-track { height: 8px; border-radius: 8px; background: rgba(124,158,255,0.12); overflow: hidden; margin-bottom: 8px; }
+        .rc-badge-bar-fill { height: 100%; background: linear-gradient(90deg, #7C9EFF, #A8D5BA); transition: width 0.4s ease; }
+        .rc-badge-next { font-size: 11.5px; color: #8fa0b8; }
+        .rc-badge-list { display: flex; gap: 8px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .rc-badge-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 14px; min-width: 64px; }
+        .rc-badge-pill.active { background: rgba(124,158,255,0.1); border: 0.5px solid rgba(124,158,255,0.3); }
+        .rc-badge-pill.locked { opacity: 0.4; }
+        .rc-badge-pill span.e { font-size: 20px; }
+        .rc-badge-pill span.l { font-size: 9.5px; color: #6b7a9a; text-align: center; }
         .rc-footer { padding: 28px; text-align: center; border-top: 0.5px solid rgba(124,158,255,0.15); color: #8fa0b8; font-size: 12px; }
         .rc-footer strong { color: #7C9EFF; }
       `}</style>
@@ -144,28 +144,30 @@ export default function Home() {
         </section>
 
         <section className="rc-section">
-  <h2 className="rc-section-title">Miễn phí để bắt đầu</h2>
-  <p className="rc-section-sub">Không cần thẻ ngân hàng, không cần cam kết</p>
-  <div className="rc-pricing">
-    <div className="rc-plan">
-      <div className="rc-plan-name">🌱 Free</div>
-      <div className="rc-plan-price"><span className="price">0đ</span><span className="period"> mãi mãi</span></div>
-      <ul className="rc-plan-items">
-        {['Chat ẩn danh với người dùng','AI chatbot cơ bản','30 tin nhắn AI / giờ','Bảo mật & ẩn danh'].map((item,i) => <li key={i}>{item}</li>)}
-      </ul>
-      <button className="rc-plan-btn sec" onClick={() => router.push('/onboarding')}>Bắt đầu miễn phí</button>
-    </div>
-    <div className="rc-plan featured">
-      <div className="rc-plan-badge">✨ Phổ biến nhất</div>
-      <div className="rc-plan-name">🌸 Premium</div>
-      <div className="rc-plan-price"><span className="price">50k</span><span className="period">/tháng</span></div>
-      <ul className="rc-plan-items">
-        {['Tất cả tính năng Free','AI nâng cao (GPT-4)','100 tin nhắn AI / giờ','Không quảng cáo','Mood tracking'].map((item,i) => <li key={i}>{item}</li>)}
-      </ul>
-      <button className="rc-plan-btn main">Nâng cấp Premium ↗</button>
-    </div>
-  </div>
-</section>
+          <h2 className="rc-section-title">Huy hiệu tin cậy của bạn</h2>
+          <p className="rc-section-sub">Tích lũy qua mỗi lần check-in và trò chuyện chân thành — hoàn toàn ẩn danh</p>
+          <div className="rc-badge-card">
+            <div className="rc-badge-emoji">{badge.emoji}</div>
+            <div className="rc-badge-label">{badge.label}</div>
+            <div className="rc-badge-desc">{badge.description}</div>
+            {next ? (
+              <>
+                <div className="rc-badge-bar-track"><div className="rc-badge-bar-fill" style={{ width: `${progress * 100}%` }} /></div>
+                <div className="rc-badge-next">{loaded ? points : 0} điểm · còn {Math.max(0, next.minPoints - points)} điểm nữa để đạt {next.emoji} {next.label}</div>
+              </>
+            ) : (
+              <div className="rc-badge-next">{loaded ? points : 0} điểm · bạn đã đạt huy hiệu cao nhất 🎉</div>
+            )}
+            <div className="rc-badge-list">
+              {TRUST_BADGES.map(b => (
+                <div key={b.key} className={`rc-badge-pill ${b.key === badge.key ? 'active' : (loaded && points < b.minPoints ? 'locked' : '')}`}>
+                  <span className="e">{b.emoji}</span>
+                  <span className="l">{b.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className="rc-section" id="how">
           <h2 className="rc-section-title">Dùng đơn giản như thế này</h2>
@@ -181,30 +183,6 @@ export default function Home() {
                 <div className="rc-step-content"><h4>{s.title}</h4><p>{s.desc}</p></div>
               </div>
             ))}
-          </div>
-        </section>
-
-        <section className="rc-section">
-          <h2 className="rc-section-title">Miễn phí để bắt đầu</h2>
-          <p className="rc-section-sub">Không cần thẻ ngân hàng, không cần cam kết</p>
-          <div className="rc-pricing">
-            <div className="rc-plan">
-              <div className="rc-plan-name">🌱 Free</div>
-              <div className="rc-plan-price"><span className="price">0đ</span><span className="period"> mãi mãi</span></div>
-              <ul className="rc-plan-items">
-                {['Chat ẩn danh với người dùng','AI chatbot cơ bản','30 tin nhắn AI / giờ','Bảo mật & ẩn danh'].map((item,i) => <li key={i}>{item}</li>)}
-              </ul>
-              <button className="rc-plan-btn sec" onClick={() => router.push('/onboarding')}>Bắt đầu miễn phí</button>
-            </div>
-            <div className="rc-plan featured">
-              <div className="rc-plan-badge">✨ Phổ biến nhất</div>
-              <div className="rc-plan-name">🌸 Premium</div>
-              <div className="rc-plan-price"><span className="price">50k</span><span className="period">/tháng</span></div>
-              <ul className="rc-plan-items">
-                {['Tất cả tính năng Free','AI nâng cao (GPT-4)','100 tin nhắn AI / giờ','Không quảng cáo','Mood tracking'].map((item,i) => <li key={i}>{item}</li>)}
-              </ul>
-              <button className="rc-plan-btn main">Nâng cấp Premium ↗</button>
-            </div>
           </div>
         </section>
 
