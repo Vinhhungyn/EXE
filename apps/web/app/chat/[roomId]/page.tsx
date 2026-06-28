@@ -25,6 +25,13 @@ const CHECKIN_OPTIONS = [
   { key: 'still_hard', emoji: '😔', label: 'Vẫn khó' },
 ] as const
 
+const REPORT_REASONS = [
+  { key: 'spam', label: 'Spam hoặc quảng cáo' },
+  { key: 'harassment', label: 'Qu骚扰hoặc xúc phạm' },
+  { key: 'inappropriate', label: 'Nội dung không phù hợp' },
+  { key: 'other', label: 'Khác' },
+] as const
+
 const THEMES = {
   soft: {
     name: '🌿 Nhẹ nhàng',
@@ -181,6 +188,123 @@ function CheckinModal({ theme, onPick, onSkip }: { theme: ThemeKey; onPick: (key
   )
 }
 
+function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey; roomId: string; reporterName: string; onClose: () => void }) {
+  const t = THEMES[theme]
+  const [reason, setReason] = useState<typeof REPORT_REASONS[number]['key'] | null>(null)
+  const [details, setDetails] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!reason) return
+    setLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/api/v1/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporterName,
+          reportedName: 'Unknown', // Ẩn danh, chưa biết tên người bị báo cáo
+          reason: reason + (details ? ': ' + details : ''),
+          roomId,
+        }),
+      })
+      if (response.ok) {
+        setSubmitted(true)
+        setTimeout(() => onClose(), 1500)
+      }
+    } catch (err) {
+      console.error('Report error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white',
+        borderRadius: '24px', padding: '28px 24px', textAlign: 'center',
+        border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease',
+      }}>
+        {submitted ? (
+          <>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>✓</div>
+            <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '16px', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
+              Báo cáo đã gửi
+            </h2>
+            <p style={{ fontSize: '12px', color: t.dot }}>Cảm ơn bạn đã giúp cải thiện cộng đồng</p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🚩</div>
+            <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '6px' }}>
+              Báo cáo vi phạm
+            </h2>
+            <p style={{ fontSize: '12px', color: t.dot, marginBottom: '20px' }}>Lý do báo cáo</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              {REPORT_REASONS.map(opt => (
+                <button key={opt.key} onClick={() => setReason(opt.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                    borderRadius: '16px', border: `0.5px solid ${reason === opt.key ? '#ef4444' : t.border}`,
+                    background: reason === opt.key ? 'rgba(239,68,68,0.1)' : (theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF'),
+                    color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '13px', fontWeight: 500,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                  <span style={{
+                    width: '18px', height: '18px', borderRadius: '4px', border: `1.5px solid ${reason === opt.key ? '#ef4444' : '#ccc'}`,
+                    background: reason === opt.key ? '#ef4444' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', color: 'white',
+                  }}>
+                    {reason === opt.key && '✓'}
+                  </span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={details}
+              onChange={e => setDetails(e.target.value)}
+              placeholder="Chi tiết bổ sung (không bắt buộc)..."
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: '12px', border: `0.5px solid ${t.border}`,
+                background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF',
+                color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '12px', outline: 'none',
+                resize: 'none', height: '70px', marginBottom: '16px',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={onClose} disabled={loading}
+                style={{
+                  flex: 1, padding: '10px 16px', borderRadius: '12px', border: `0.5px solid ${t.border}`,
+                  background: 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889',
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1,
+                }}>
+                Hủy
+              </button>
+              <button onClick={handleSubmit} disabled={!reason || loading}
+                style={{
+                  flex: 1, padding: '10px 16px', borderRadius: '12px', border: 'none',
+                  background: !reason || loading ? '#ccc' : '#ef4444', color: 'white',
+                  fontSize: '13px', fontWeight: 600, cursor: !reason || loading ? 'not-allowed' : 'pointer',
+                }}>
+                {loading ? '...' : 'Gửi báo cáo'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+    </div>
+  )
+}
+
 type CheckinEntry = {
   date: string
   key: typeof CHECKIN_OPTIONS[number]['key']
@@ -200,6 +324,7 @@ export default function ChatRoomPage() {
   const [pickerFor, setPickerFor] = useState<string | null>(null)
   const [reactions, setReactions] = useState<Record<string, { emoji: string; displayName: string }[]>>({})
   const [showCheckin, setShowCheckin] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const socketRef = useRef<Socket | null>(null) 
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -210,7 +335,7 @@ export default function ChatRoomPage() {
   } = useVoiceRecorder()
 
   const session = typeof window !== 'undefined'
-  ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
+    ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
     : {}
 
   const t = THEMES[theme]
@@ -364,6 +489,10 @@ export default function ChatRoomPage() {
                 </div>
               )}
             </div>
+            <button onClick={() => setShowReport(true)} title="Báo cáo vi phạm"
+              style={{padding:'6px 12px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:'transparent', color:'#ef4444', fontSize:'12px', cursor:'pointer'}}>
+              🚩 Báo cáo
+            </button>
             <button onClick={leaveRoom}
               style={{padding:'6px 12px', borderRadius:'20px', border:'none', background:'transparent', color:'#ef4444', fontSize:'12px', cursor:'pointer'}}>
               Rời phòng
@@ -499,6 +628,10 @@ export default function ChatRoomPage() {
 
       {showCheckin && (
         <CheckinModal theme={theme} onPick={key => finishLeaving(key)} onSkip={() => finishLeaving()} />
+      )}
+
+      {showReport && (
+        <ReportModal theme={theme} roomId={roomId as string} reporterName={session.displayName} onClose={() => setShowReport(false)} />
       )}
 
       <style>{`
