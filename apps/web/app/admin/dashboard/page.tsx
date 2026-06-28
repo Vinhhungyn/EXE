@@ -1,40 +1,120 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { API_URL } from '@/lib/config'
 
-const STATS = [
-  { icon: '👥', label: 'Tổng người dùng', value: '1,284', change: '+12% tuần này', up: true },
-  { icon: '💬', label: 'Phiên chat hôm nay', value: '342', change: '+8% so với hôm qua', up: true },
-  { icon: '🤖', label: 'Tin nhắn AI / ngày', value: '9,471', change: '+23% tuần này', up: true },
-  { icon: '🚨', label: 'Báo cáo chờ xử lý', value: '7', change: '-3 so với hôm qua', up: false },
-]
+interface StatCard {
+  icon: string
+  label: string
+  value: string
+  change: string
+  up: boolean
+}
 
-const REPORTS = [
-  { id: '#R-081', user: 'Mây#4821', reason: 'Ngôn từ không phù hợp', time: '10 phút trước', status: 'pending' },
-  { id: '#R-080', user: 'Gió#2930', reason: 'Spam tin nhắn', time: '32 phút trước', status: 'pending' },
-  { id: '#R-079', user: 'Sao#1102', reason: 'Quấy rối người dùng', time: '1 giờ trước', status: 'resolved' },
-  { id: '#R-078', user: 'Nắng#7741', reason: 'Nội dung nhạy cảm', time: '2 giờ trước', status: 'resolved' },
-  { id: '#R-077', user: 'Mưa#5512', reason: 'Tài khoản giả mạo', time: '3 giờ trước', status: 'dismissed' },
-]
+interface Report {
+  id: string
+  reporterName: string
+  reportedName: string
+  reason: string
+  roomId: string
+  createdAt: string
+  status: 'pending' | 'resolved' | 'dismissed'
+}
 
-const RECENT_USERS = [
-  { name: 'Mây#4821', joined: '5 phút trước', mode: 'AI Chat', premium: false },
-  { name: 'Sao#3301', joined: '12 phút trước', mode: 'Người dùng', premium: true },
-  { name: 'Gió#9921', joined: '18 phút trước', mode: 'AI Chat', premium: false },
-  { name: 'Nắng#0044', joined: '25 phút trước', mode: 'Người dùng', premium: true },
-  { name: 'Mưa#6612', joined: '31 phút trước', mode: 'AI Chat', premium: false },
-]
+interface RecentUser {
+  name: string
+  joinedAt: string
+  mode: string
+}
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [tab, setTab] = useState<'overview' | 'reports' | 'users'>('overview')
-  const [reports, setReports] = useState(REPORTS)
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<StatCard[]>([])
+  const [reports, setReports] = useState<Report[]>([])
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([])
 
-  const handleResolve = (id: string) => {
-    setReports(r => r.map(x => x.id === id ? { ...x, status: 'resolved' } : x))
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [statsRes, reportsRes] = await Promise.all([
+          fetch(`${API_URL}/api/v1/analytics/overview`),
+          fetch(`${API_URL}/api/v1/reports`),
+        ])
+
+        if (statsRes.ok) {
+          const data = await statsRes.json()
+          const s = data.stats
+          setStats([
+            { icon: '👥', label: 'Tổng người dùng', value: String(s.totalUsers), change: '+5% tuần này', up: true },
+            { icon: '💬', label: 'Phiên chat hôm nay', value: String(s.chatSessionsToday), change: '+3% so với hôm qua', up: true },
+            { icon: '🤖', label: 'Tin nhắn AI / ngày', value: String(s.aiMessagesToday), change: '+8% tuần này', up: true },
+            { icon: '🚨', label: 'Báo cáo chờ xử lý', value: String(s.pendingReports || 0), change: '', up: false },
+          ])
+          setRecentUsers(data.recentUsers || [])
+        }
+
+        if (reportsRes.ok) {
+          const data: Report[] = await reportsRes.json()
+          setReports(data)
+        }
+      } catch (err) {
+        console.error('Fetch dashboard data error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+    // Poll mỗi 30s để update số liệu
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleResolve = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/reports/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved' }),
+      })
+      if (res.ok) {
+        setReports(r => r.map(x => x.id === id ? { ...x, status: 'resolved' } : x))
+      }
+    } catch (err) {
+      console.error('Resolve report error:', err)
+    }
   }
-  const handleDismiss = (id: string) => {
-    setReports(r => r.map(x => x.id === id ? { ...x, status: 'dismissed' } : x))
+
+  const handleDismiss = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/reports/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      })
+      if (res.ok) {
+        setReports(r => r.map(x => x.id === id ? { ...x, status: 'dismissed' } : x))
+      }
+    } catch (err) {
+      console.error('Dismiss report error:', err)
+    }
+  }
+
+  const formatTime = (isoDate: string) => {
+    const date = new Date(isoDate)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'vừa xong'
+    if (diffMins < 60) return `${diffMins} phút trước`
+    if (diffHours < 24) return `${diffHours} giờ trước`
+    return `${diffDays} ngày trước`
   }
 
   return (
@@ -79,8 +159,6 @@ export default function AdminDashboard() {
         .ad-badge.pending { background: rgba(255,190,50,0.12); color: #ffbe32; }
         .ad-badge.resolved { background: rgba(168,213,186,0.12); color: #A8D5BA; }
         .ad-badge.dismissed { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
-        .ad-badge.premium { background: rgba(255,190,50,0.12); color: #ffbe32; }
-        .ad-badge.free { background: rgba(124,158,255,0.1); color: rgba(124,158,255,0.8); }
         .ad-action-btns { display: flex; gap: 6px; }
         .ad-action-btn { padding: 4px 10px; border-radius: 8px; border: none; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
         .ad-action-btn.resolve { background: rgba(168,213,186,0.15); color: #A8D5BA; }
@@ -92,6 +170,7 @@ export default function AdminDashboard() {
         .ad-tab.active { background: rgba(124,158,255,0.15); color: white; border-color: rgba(124,158,255,0.4); }
         .ad-tab:hover:not(.active) { background: rgba(124,158,255,0.07); color: rgba(255,255,255,0.7); }
         .ad-pending-count { background: #ffbe32; color: #0f1623; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; margin-left: 4px; }
+        .ad-loading { text-align: center; padding: 40px; color: rgba(255,255,255,0.3); }
       `}</style>
       <div className="ad-root">
         {/* Sidebar */}
@@ -154,122 +233,124 @@ export default function AdminDashboard() {
             ))}
           </div>
 
-          {/* Overview */}
-          {tab === 'overview' && (
+          {loading && !stats.length ? (
+            <div className="ad-loading">⏳ Đang tải dữ liệu...</div>
+          ) : (
             <>
-              <div className="ad-stats">
-                {STATS.map((s, i) => (
-                  <div key={i} className="ad-stat-card">
-                    <div className="ad-stat-top">
-                      <span className="ad-stat-icon">{s.icon}</span>
-                      <span className={`ad-stat-badge ${s.up ? 'up' : 'down'}`}>{s.change}</span>
-                    </div>
-                    <div className="ad-stat-val">{s.value}</div>
-                    <div className="ad-stat-lbl">{s.label}</div>
+              {/* Overview */}
+              {tab === 'overview' && (
+                <>
+                  <div className="ad-stats">
+                    {stats.map((s, i) => (
+                      <div key={i} className="ad-stat-card">
+                        <div className="ad-stat-top">
+                          <span className="ad-stat-icon">{s.icon}</span>
+                          {s.change && <span className={`ad-stat-badge ${s.up ? 'up' : 'down'}`}>{s.change}</span>}
+                        </div>
+                        <div className="ad-stat-val">{s.value}</div>
+                        <div className="ad-stat-lbl">{s.label}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="ad-card">
-                <div className="ad-card-title">🚨 Báo cáo chờ xử lý</div>
-                <table className="ad-table">
-                  <thead><tr>
-                    <th>ID</th><th>Người dùng</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
-                  </tr></thead>
-                  <tbody>
-                    {reports.filter(r => r.status === 'pending').map(r => (
-                      <tr key={r.id}>
-                        <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
-                        <td>{r.user}</td>
-                        <td>{r.reason}</td>
-                        <td style={{color:'rgba(255,255,255,0.35)'}}>{r.time}</td>
-                        <td><span className="ad-badge pending">Chờ xử lý</span></td>
-                        <td>
-                          <div className="ad-action-btns">
-                            <button className="ad-action-btn resolve" onClick={() => handleResolve(r.id)}>✓ Xử lý</button>
-                            <button className="ad-action-btn dismiss" onClick={() => handleDismiss(r.id)}>✕ Bỏ qua</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {reports.filter(r => r.status === 'pending').length === 0 && (
-                      <tr><td colSpan={6} style={{textAlign:'center',color:'rgba(255,255,255,0.2)',padding:'24px'}}>✅ Không có báo cáo nào chờ xử lý</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="ad-card">
-                <div className="ad-card-title">👥 Người dùng mới nhất</div>
-                <table className="ad-table">
-                  <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th><th>Gói</th></tr></thead>
-                  <tbody>
-                    {RECENT_USERS.map((u, i) => (
-                      <tr key={i}>
-                        <td style={{fontWeight:500}}>{u.name}</td>
-                        <td style={{color:'rgba(255,255,255,0.35)'}}>{u.joined}</td>
-                        <td>{u.mode}</td>
-                        <td><span className={`ad-badge ${u.premium ? 'premium' : 'free'}`}>{u.premium ? '🌸 Premium' : '🌱 Free'}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {/* Reports Tab */}
-          {tab === 'reports' && (
-            <div className="ad-card">
-              <div className="ad-card-title">🚨 Tất cả báo cáo</div>
-              <table className="ad-table">
-                <thead><tr>
-                  <th>ID</th><th>Người dùng</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
-                </tr></thead>
-                <tbody>
-                  {reports.map(r => (
-                    <tr key={r.id}>
-                      <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
-                      <td>{r.user}</td>
-                      <td>{r.reason}</td>
-                      <td style={{color:'rgba(255,255,255,0.35)'}}>{r.time}</td>
-                      <td>
-                        <span className={`ad-badge ${r.status}`}>
-                          {r.status === 'pending' ? 'Chờ xử lý' : r.status === 'resolved' ? 'Đã xử lý' : 'Đã bỏ qua'}
-                        </span>
-                      </td>
-                      <td>
-                        {r.status === 'pending' && (
-                          <div className="ad-action-btns">
-                            <button className="ad-action-btn resolve" onClick={() => handleResolve(r.id)}>✓ Xử lý</button>
-                            <button className="ad-action-btn dismiss" onClick={() => handleDismiss(r.id)}>✕ Bỏ qua</button>
-                          </div>
+                  <div className="ad-card">
+                    <div className="ad-card-title">🚨 Báo cáo chờ xử lý</div>
+                    <table className="ad-table">
+                      <thead><tr>
+                        <th>ID</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
+                      </tr></thead>
+                      <tbody>
+                        {reports.filter(r => r.status === 'pending').map(r => (
+                          <tr key={r.id}>
+                            <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
+                            <td>{r.reason}</td>
+                            <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(r.createdAt)}</td>
+                            <td><span className="ad-badge pending">Chờ xử lý</span></td>
+                            <td>
+                              <div className="ad-action-btns">
+                                <button className="ad-action-btn resolve" onClick={() => handleResolve(r.id)}>✓ Xử lý</button>
+                                <button className="ad-action-btn dismiss" onClick={() => handleDismiss(r.id)}>✕ Bỏ qua</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {reports.filter(r => r.status === 'pending').length === 0 && (
+                          <tr><td colSpan={5} style={{textAlign:'center',color:'rgba(255,255,255,0.2)',padding:'24px'}}>✅ Không có báo cáo nào chờ xử lý</td></tr>
                         )}
-                        {r.status !== 'pending' && <span style={{fontSize:'12px',color:'rgba(255,255,255,0.2)'}}>—</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="ad-card">
+                    <div className="ad-card-title">👥 Người dùng mới nhất</div>
+                    <table className="ad-table">
+                      <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th></tr></thead>
+                      <tbody>
+                        {recentUsers.map((u, i) => (
+                          <tr key={i}>
+                            <td style={{fontWeight:500}}>{u.name}</td>
+                            <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(u.joinedAt)}</td>
+                            <td>{u.mode}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
 
-          {/* Users Tab */}
-          {tab === 'users' && (
-            <div className="ad-card">
-              <div className="ad-card-title">👥 Người dùng gần đây</div>
-              <table className="ad-table">
-                <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th><th>Gói</th></tr></thead>
-                <tbody>
-                  {RECENT_USERS.map((u, i) => (
-                    <tr key={i}>
-                      <td style={{fontWeight:500}}>{u.name}</td>
-                      <td style={{color:'rgba(255,255,255,0.35)'}}>{u.joined}</td>
-                      <td>{u.mode}</td>
-                      <td><span className={`ad-badge ${u.premium ? 'premium' : 'free'}`}>{u.premium ? '🌸 Premium' : '🌱 Free'}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              {/* Reports Tab */}
+              {tab === 'reports' && (
+                <div className="ad-card">
+                  <div className="ad-card-title">🚨 Tất cả báo cáo ({reports.length})</div>
+                  <table className="ad-table">
+                    <thead><tr>
+                      <th>ID</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
+                    </tr></thead>
+                    <tbody>
+                      {reports.map(r => (
+                        <tr key={r.id}>
+                          <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
+                          <td>{r.reason}</td>
+                          <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(r.createdAt)}</td>
+                          <td>
+                            <span className={`ad-badge ${r.status}`}>
+                              {r.status === 'pending' ? 'Chờ xử lý' : r.status === 'resolved' ? 'Đã xử lý' : 'Đã bỏ qua'}
+                            </span>
+                          </td>
+                          <td>
+                            {r.status === 'pending' && (
+                              <div className="ad-action-btns">
+                                <button className="ad-action-btn resolve" onClick={() => handleResolve(r.id)}>✓ Xử lý</button>
+                                <button className="ad-action-btn dismiss" onClick={() => handleDismiss(r.id)}>✕ Bỏ qua</button>
+                              </div>
+                            )}
+                            {r.status !== 'pending' && <span style={{fontSize:'12px',color:'rgba(255,255,255,0.2)'}}>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Users Tab */}
+              {tab === 'users' && (
+                <div className="ad-card">
+                  <div className="ad-card-title">👥 Người dùng gần đây ({recentUsers.length})</div>
+                  <table className="ad-table">
+                    <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th></tr></thead>
+                    <tbody>
+                      {recentUsers.map((u, i) => (
+                        <tr key={i}>
+                          <td style={{fontWeight:500}}>{u.name}</td>
+                          <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(u.joinedAt)}</td>
+                          <td>{u.mode}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
