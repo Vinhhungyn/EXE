@@ -26,10 +26,10 @@ const CHECKIN_OPTIONS = [
 ] as const
 
 const REPORT_REASONS = [
-  { key: 'spam', label: 'Spam' },
-  { key: 'harassment', label: 'Hanh dong xau' },
-  { key: 'inappropriate', label: 'Noi dung khong hop le' },
-  { key: 'other', label: 'Khac' },
+  { key: 'spam', label: 'Spam / Quảng cáo' },
+  { key: 'harassment', label: 'Hành vi xấu / Quấy rối' },
+  { key: 'inappropriate', label: 'Nội dung không phù hợp' },
+  { key: 'other', label: 'Lý do khác' },
 ] as const
 
 const THEMES = {
@@ -85,11 +85,7 @@ function VoiceBubble({ audioData, duration, isSelf, theme }: { audioData: string
   const toggle = () => {
     const audio = audioRef.current
     if (!audio) return
-    if (playing) {
-      audio.pause()
-    } else {
-      audio.play()
-    }
+    if (playing) { audio.pause() } else { audio.play() }
   }
 
   return (
@@ -105,13 +101,8 @@ function VoiceBubble({ audioData, duration, isSelf, theme }: { audioData: string
           if (el.duration) setProgress(el.currentTime / el.duration)
         }}
       />
-      <button
-        onClick={toggle}
-        style={{
-          width: '30px', height: '30px', borderRadius: '50%', border: 'none', flexShrink: 0,
-          background: isSelf ? 'rgba(255,255,255,0.25)' : t.send,
-          color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'
-        }}>
+      <button onClick={toggle}
+        style={{ width: '30px', height: '30px', borderRadius: '50%', border: 'none', flexShrink: 0, background: isSelf ? 'rgba(255,255,255,0.25)' : t.send, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>
         {playing ? '⏸' : '▶'}
       </button>
       <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: isSelf ? 'rgba(255,255,255,0.3)' : 'rgba(124,158,255,0.2)', overflow: 'hidden' }}>
@@ -125,14 +116,8 @@ function VoiceBubble({ audioData, duration, isSelf, theme }: { audioData: string
 function ReactionPicker({ theme, onPick, onClose }: { theme: ThemeKey; onPick: (emoji: string) => void; onClose: () => void }) {
   const t = THEMES[theme]
   return (
-    <div
-      onMouseLeave={onClose}
-      style={{
-        position: 'absolute', bottom: '100%', marginBottom: '6px', left: 0,
-        display: 'flex', gap: '4px', padding: '6px 8px', borderRadius: '20px',
-        background: theme === 'cool' ? '#1A1D27' : 'white',
-        border: `0.5px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.15)', zIndex: 5,
-      }}>
+    <div onMouseLeave={onClose}
+      style={{ position: 'absolute', bottom: '100%', marginBottom: '6px', left: 0, display: 'flex', gap: '4px', padding: '6px 8px', borderRadius: '20px', background: theme === 'cool' ? '#1A1D27' : 'white', border: `0.5px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.15)', zIndex: 5 }}>
       {REACTION_EMOJIS.map(e => (
         <button key={e} onClick={() => onPick(e)}
           style={{ background: 'none', border: 'none', fontSize: '17px', cursor: 'pointer', padding: '2px', borderRadius: '8px', transition: 'transform 0.1s' }}
@@ -148,30 +133,15 @@ function ReactionPicker({ theme, onPick, onClose }: { theme: ThemeKey; onPick: (
 function CheckinModal({ theme, onPick, onSkip }: { theme: ThemeKey; onPick: (key: typeof CHECKIN_OPTIONS[number]['key']) => void; onSkip: () => void }) {
   const t = THEMES[theme]
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white',
-        borderRadius: '24px', padding: '28px 24px', textAlign: 'center',
-        border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease',
-      }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+      <div style={{ width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white', borderRadius: '24px', padding: '28px 24px', textAlign: 'center', border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease' }}>
         <div style={{ fontSize: '40px', marginBottom: '12px' }}>🌿</div>
-        <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '6px' }}>
-          Bạn cảm thấy thế nào sau cuộc trò chuyện?
-        </h2>
+        <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '6px' }}>Bạn cảm thấy thế nào sau cuộc trò chuyện?</h2>
         <p style={{ fontSize: '12px', color: t.dot, marginBottom: '20px' }}>Chia sẻ giúp mình hiểu bạn hơn</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {CHECKIN_OPTIONS.map(opt => (
             <button key={opt.key} onClick={() => onPick(opt.key)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-                borderRadius: '16px', border: `0.5px solid ${t.border}`,
-                background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF',
-                color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '14px', fontWeight: 600,
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '16px', border: `0.5px solid ${t.border}`, background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF', color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
               onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
               <span style={{ fontSize: '22px' }}>{opt.emoji}</span>
@@ -179,9 +149,7 @@ function CheckinModal({ theme, onPick, onSkip }: { theme: ThemeKey; onPick: (key
             </button>
           ))}
         </div>
-        <button onClick={onSkip} style={{ marginTop: '16px', background: 'none', border: 'none', color: t.dot, fontSize: '12px', cursor: 'pointer' }}>
-          Bỏ qua
-        </button>
+        <button onClick={onSkip} style={{ marginTop: '16px', background: 'none', border: 'none', color: t.dot, fontSize: '12px', cursor: 'pointer' }}>Bỏ qua</button>
       </div>
       <style>{`@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
     </div>
@@ -200,130 +168,86 @@ function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey
     if (!reason) return
     setLoading(true)
     setError('')
-    
+
+    // Lấy label tiếng Việt để gửi lên server
+    const reasonLabel = REPORT_REASONS.find(r => r.key === reason)?.label || reason
+    const fullReason = details.trim() ? `${reasonLabel}: ${details.trim()}` : reasonLabel
+
     const payload = {
-      reporterName,
+      reporterName: reporterName || 'Anonymous',
       reportedName: 'Unknown',
-      reason: reason + (details ? ': ' + details : ''),
-      roomId,
+      reason: fullReason,
+      roomId: roomId || 'unknown-room', // Đảm bảo không undefined
     }
-    
-    console.log('[REPORT] Payload:', payload)
-    console.log('[REPORT] API_URL:', API_URL)
-    console.log('[REPORT] Endpoint:', `${API_URL}/api/v1/reports`)
-    
+
     try {
-      const endpoint = `${API_URL}/api/v1/reports`
-      console.log('[REPORT] Sending to:', endpoint)
-      
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_URL}/api/v1/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      
-      console.log('[REPORT] Response status:', response.status)
-      console.log('[REPORT] Response OK:', response.ok)
-      
-      const responseText = await response.text()
-      console.log('[REPORT] Response body:', responseText)
-      
+
       if (response.ok) {
         setSubmitted(true)
-        setTimeout(() => onClose(), 1500)
+        setTimeout(() => onClose(), 2000)
       } else {
-        setError(`Error: ${response.status} - ${responseText}`)
+        const text = await response.text()
+        setError(`Lỗi ${response.status}: ${text}`)
       }
     } catch (err) {
-      console.error('[REPORT] Error:', err)
-      setError(String(err))
+      setError('Không thể kết nối server. Vui lòng thử lại.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px',
-    }}>
-      <div style={{
-        width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white',
-        borderRadius: '24px', padding: '28px 24px', textAlign: 'center',
-        border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease',
-      }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px' }}>
+      <div style={{ width: '100%', maxWidth: '360px', background: theme === 'cool' ? '#1A1D27' : 'white', borderRadius: '24px', padding: '28px 24px', border: `0.5px solid ${t.border}`, animation: 'popIn 0.25s ease' }}>
         {submitted ? (
-          <>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>✓</div>
-            <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '16px', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
-              Báo cáo đã gửi
-            </h2>
-            <p style={{ fontSize: '12px', color: t.dot }}>Cảm ơn bạn đã giúp cải thiện cộng đồng</p>
-          </>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
+            <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: '#10b981', marginBottom: '8px' }}>Báo cáo đã gửi!</h2>
+            <p style={{ fontSize: '13px', color: t.dot }}>Cảm ơn bạn đã giúp cải thiện cộng đồng 💙</p>
+          </div>
         ) : (
           <>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>🚩</div>
-            <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '6px' }}>
-              Báo cáo vi phạm
-            </h2>
-            <p style={{ fontSize: '12px', color: t.dot, marginBottom: '20px' }}>Lý do báo cáo</p>
-            
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>🚩</div>
+              <h2 style={{ fontFamily: 'Nunito, sans-serif', fontSize: '18px', fontWeight: 700, color: theme === 'cool' ? '#E2E8F0' : '#1a2340', marginBottom: '4px' }}>Báo cáo vi phạm</h2>
+              <p style={{ fontSize: '12px', color: t.dot }}>Chọn lý do báo cáo</p>
+            </div>
+
             {error && (
-              <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', marginBottom: '12px' }}>
-                {error}
+              <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', marginBottom: '14px', lineHeight: 1.5 }}>
+                ⚠️ {error}
               </div>
             )}
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
               {REPORT_REASONS.map(opt => (
                 <button key={opt.key} onClick={() => setReason(opt.key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
-                    borderRadius: '16px', border: `0.5px solid ${reason === opt.key ? '#ef4444' : t.border}`,
-                    background: reason === opt.key ? 'rgba(239,68,68,0.1)' : (theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF'),
-                    color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '13px', fontWeight: 500,
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
-                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
-                  <span style={{
-                    width: '18px', height: '18px', borderRadius: '4px', border: `1.5px solid ${reason === opt.key ? '#ef4444' : '#ccc'}`,
-                    background: reason === opt.key ? '#ef4444' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '10px', color: 'white',
-                  }}>
-                    {reason === opt.key && '✓'}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', borderRadius: '14px', border: `1.5px solid ${reason === opt.key ? '#ef4444' : t.border}`, background: reason === opt.key ? 'rgba(239,68,68,0.08)' : (theme === 'cool' ? 'rgba(255,255,255,0.03)' : '#F8F9FF'), color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '13px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' }}>
+                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${reason === opt.key ? '#ef4444' : '#ccc'}`, background: reason === opt.key ? '#ef4444' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {reason === opt.key && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'white', display: 'block' }} />}
                   </span>
                   {opt.label}
                 </button>
               ))}
             </div>
-            <textarea
-              value={details}
-              onChange={e => setDetails(e.target.value)}
+
+            <textarea value={details} onChange={e => setDetails(e.target.value)}
               placeholder="Chi tiết bổ sung (không bắt buộc)..."
-              style={{
-                width: '100%', padding: '10px 12px', borderRadius: '12px', border: `0.5px solid ${t.border}`,
-                background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF',
-                color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '12px', outline: 'none',
-                resize: 'none', height: '70px', marginBottom: '16px',
-              }}
-            />
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: `0.5px solid ${t.border}`, background: theme === 'cool' ? 'rgba(255,255,255,0.04)' : '#F8F9FF', color: theme === 'cool' ? '#C4C9E2' : '#1a2340', fontSize: '12px', outline: 'none', resize: 'none', height: '64px', marginBottom: '14px', fontFamily: 'inherit' }} />
+
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={onClose} disabled={loading}
-                style={{
-                  flex: 1, padding: '10px 16px', borderRadius: '12px', border: `0.5px solid ${t.border}`,
-                  background: 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889',
-                  fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1,
-                }}>
+                style={{ flex: 1, padding: '11px', borderRadius: '12px', border: `0.5px solid ${t.border}`, background: 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                 Hủy
               </button>
               <button onClick={handleSubmit} disabled={!reason || loading}
-                style={{
-                  flex: 1, padding: '10px 16px', borderRadius: '12px', border: 'none',
-                  background: !reason || loading ? '#ccc' : '#ef4444', color: 'white',
-                  fontSize: '13px', fontWeight: 600, cursor: !reason || loading ? 'not-allowed' : 'pointer',
-                }}>
-                {loading ? '...' : 'Gửi báo cáo'}
+                style={{ flex: 1, padding: '11px', borderRadius: '12px', border: 'none', background: !reason || loading ? (theme === 'cool' ? 'rgba(255,255,255,0.1)' : '#e0e4f0') : '#ef4444', color: !reason || loading ? '#aaa' : 'white', fontSize: '13px', fontWeight: 600, cursor: !reason || loading ? 'not-allowed' : 'pointer', transition: 'all 0.15s' }}>
+                {loading ? '⏳ Đang gửi...' : '🚩 Gửi báo cáo'}
               </button>
             </div>
           </>
@@ -342,7 +266,9 @@ type CheckinEntry = {
 }
 
 export default function ChatRoomPage() {
-  const { roomId } = useParams()
+  const params = useParams()
+  // FIX: useParams() trả string | string[], phải normalize đúng cách
+  const roomId = Array.isArray(params.roomId) ? params.roomId[0] : (params.roomId || 'unknown')
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -354,7 +280,7 @@ export default function ChatRoomPage() {
   const [reactions, setReactions] = useState<Record<string, { emoji: string; displayName: string }[]>>({})
   const [showCheckin, setShowCheckin] = useState(false)
   const [showReport, setShowReport] = useState(false)
-  const socketRef = useRef<Socket | null>(null) 
+  const socketRef = useRef<Socket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
@@ -370,9 +296,7 @@ export default function ChatRoomPage() {
   const t = THEMES[theme]
 
   useEffect(() => {
-    const socket = io(API_URL, { 
-      transports: ['polling', 'websocket'] 
-    })
+    const socket = io(API_URL, { transports: ['polling', 'websocket'] })
     socketRef.current = socket
     socket.emit('join:room', { roomId })
 
@@ -398,7 +322,7 @@ export default function ChatRoomPage() {
     socket.on('chat:partner_left', () => setPartnerLeft(true))
 
     return () => { socket.disconnect() }
-  }, [])
+  }, [roomId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -451,9 +375,7 @@ export default function ChatRoomPage() {
     router.push('/chat')
   }
 
-  const handleMicDown = () => {
-    startRecording()
-  }
+  const handleMicDown = () => { startRecording() }
 
   const handleMicUp = async () => {
     if (!isRecording) return
@@ -482,81 +404,66 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div style={{minHeight:'100vh', background:t.bg, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px', transition:'all 0.3s'}}>
-      <div style={{width:'100%', maxWidth:'480px', background:t.card, borderRadius:'24px', border:`0.5px solid ${t.border}`, boxShadow:'0 4px 28px rgba(0,0,0,0.08)', display:'flex', flexDirection:'column', height:'88vh', transition:'all 0.3s'}}>
+    <div style={{ minHeight: '100vh', background: t.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', transition: 'all 0.3s' }}>
+      <div style={{ width: '100%', maxWidth: '480px', background: t.card, borderRadius: '24px', border: `0.5px solid ${t.border}`, boxShadow: '0 4px 28px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', height: '88vh', transition: 'all 0.3s' }}>
 
         {/* Header */}
-        <div style={{padding:'14px 18px', background:t.header, borderBottom:`0.5px solid ${t.border}`, borderRadius:'24px 24px 0 0', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-          <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-            <div style={{width:'36px', height:'36px', borderRadius:'50%', background:t.send, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px'}}>🎭</div>
+        <div style={{ padding: '14px 18px', background: t.header, borderBottom: `0.5px solid ${t.border}`, borderRadius: '24px 24px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: t.send, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>🎭</div>
             <div>
-              <div style={{fontSize:'13px', fontWeight:600, color: theme === 'cool' ? '#E2E8F0' : '#1a2340'}}>Phòng ẩn danh</div>
-              <div style={{fontSize:'11px', color:t.dot, display:'flex', alignItems:'center', gap:'4px'}}>
-                <span style={{width:'6px', height:'6px', background:t.dot, borderRadius:'50%', display:'inline-block'}}></span>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: theme === 'cool' ? '#E2E8F0' : '#1a2340' }}>Phòng ẩn danh</div>
+              <div style={{ fontSize: '11px', color: t.dot, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '6px', height: '6px', background: t.dot, borderRadius: '50%', display: 'inline-block' }}></span>
                 Đang kết nối
               </div>
             </div>
           </div>
-          <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-            {/* Theme picker */}
-            <div style={{position:'relative'}}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ position: 'relative' }}>
               <button onClick={() => setShowThemes(!showThemes)}
-                style={{padding:'6px 12px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', fontSize:'12px', cursor:'pointer'}}>
+                style={{ padding: '6px 12px', borderRadius: '20px', border: `0.5px solid ${t.border}`, background: 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', fontSize: '12px', cursor: 'pointer' }}>
                 🎨 Nền
               </button>
               {showThemes && (
-                <div style={{position:'absolute', right:0, top:'36px', background: theme === 'cool' ? '#1A1D27' : 'white', borderRadius:'14px', border:`0.5px solid ${t.border}`, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', padding:'8px', zIndex:10, display:'flex', flexDirection:'column', gap:'4px', minWidth:'140px'}}>
+                <div style={{ position: 'absolute', right: 0, top: '36px', background: theme === 'cool' ? '#1A1D27' : 'white', borderRadius: '14px', border: `0.5px solid ${t.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '8px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '140px' }}>
                   {(Object.keys(THEMES) as ThemeKey[]).map(k => (
                     <button key={k} onClick={() => { setTheme(k); setShowThemes(false) }}
-                      style={{padding:'8px 12px', borderRadius:'10px', border:'none', background: theme === k ? t.send : 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', fontSize:'12px', cursor:'pointer', textAlign:'left', fontWeight: theme === k ? 600 : 400}}>
+                      style={{ padding: '8px 12px', borderRadius: '10px', border: 'none', background: theme === k ? t.send : 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', fontSize: '12px', cursor: 'pointer', textAlign: 'left', fontWeight: theme === k ? 600 : 400 }}>
                       {THEMES[k].name}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <button onClick={() => setShowReport(true)} title="Báo cáo vi phạm"
-              style={{padding:'6px 12px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:'transparent', color:'#ef4444', fontSize:'12px', cursor:'pointer'}}>
+            <button onClick={() => setShowReport(true)}
+              style={{ padding: '6px 12px', borderRadius: '20px', border: `0.5px solid ${t.border}`, background: 'transparent', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}>
               🚩 Báo cáo
             </button>
             <button onClick={leaveRoom}
-              style={{padding:'6px 12px', borderRadius:'20px', border:'none', background:'transparent', color:'#ef4444', fontSize:'12px', cursor:'pointer'}}>
+              style={{ padding: '6px 12px', borderRadius: '20px', border: 'none', background: 'transparent', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}>
               Rời phòng
             </button>
           </div>
         </div>
 
         {/* Messages */}
-        <div style={{flex:1, overflowY:'auto', padding:'16px', display:'flex', flexDirection:'column', gap:'10px'}}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {messages.length === 0 && (
-            <div style={{textAlign:'center', color: theme === 'cool' ? '#6B7280' : '#8fa0b8', fontSize:'13px', marginTop:'40px'}}>
-              Bắt đầu cuộc trò chuyện 🌿
-            </div>
+            <div style={{ textAlign: 'center', color: theme === 'cool' ? '#6B7280' : '#8fa0b8', fontSize: '13px', marginTop: '40px' }}>Bắt đầu cuộc trò chuyện 🌿</div>
           )}
           {messages.map(msg => {
             const msgReactions = reactions[msg.id] ?? []
             return (
-              <div key={msg.id} style={{display:'flex', flexDirection:'column', alignItems: msg.isSelf ? 'flex-end' : 'flex-start', gap:'3px'}}>
-                <div
-                  style={{position:'relative', display:'flex', alignItems:'center', gap:'4px', flexDirection: msg.isSelf ? 'row-reverse' : 'row'}}
-                  onMouseEnter={() => {}}
-                >
-                  <div style={{maxWidth:'320px', padding: msg.type === 'voice' ? '10px 12px' : '10px 14px', borderRadius:'18px', fontSize:'13px', lineHeight:1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px'}}>
+              <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.isSelf ? 'flex-end' : 'flex-start', gap: '3px' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '4px', flexDirection: msg.isSelf ? 'row-reverse' : 'row' }}>
+                  <div style={{ maxWidth: '320px', padding: msg.type === 'voice' ? '10px 12px' : '10px 14px', borderRadius: '18px', fontSize: '13px', lineHeight: 1.5, background: msg.isSelf ? t.msgSelf : t.msgOther, color: msg.isSelf ? 'white' : t.msgOtherColor, borderBottomRightRadius: msg.isSelf ? '4px' : '18px', borderBottomLeftRadius: msg.isSelf ? '18px' : '4px' }}>
                     {msg.type === 'voice' && msg.audioData ? (
                       <VoiceBubble audioData={msg.audioData} duration={msg.duration ?? null} isSelf={msg.isSelf} theme={theme} />
-                    ) : (
-                      msg.message
-                    )}
+                    ) : msg.message}
                   </div>
-                  <button
-                    onClick={() => setPickerFor(pickerFor === msg.id ? null : msg.id)}
-                    style={{
-                      width: '22px', height: '22px', borderRadius: '50%', border: `0.5px solid ${t.border}`,
-                      background: theme === 'cool' ? '#1A1D27' : 'white', color: t.dot, fontSize: '11px',
-                      cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      opacity: 0.7,
-                    }}
-                    title="Thêm reaction">
+                  <button onClick={() => setPickerFor(pickerFor === msg.id ? null : msg.id)}
+                    style={{ width: '22px', height: '22px', borderRadius: '50%', border: `0.5px solid ${t.border}`, background: theme === 'cool' ? '#1A1D27' : 'white', color: t.dot, fontSize: '11px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7 }}>
                     +
                   </button>
                   {pickerFor === msg.id && (
@@ -564,10 +471,10 @@ export default function ChatRoomPage() {
                   )}
                 </div>
                 {msgReactions.length > 0 && (
-                  <div style={{display:'flex', gap:'3px', flexWrap:'wrap', maxWidth:'200px'}}>
+                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '200px' }}>
                     {msgReactions.map((r, i) => (
                       <span key={i} title={r.displayName}
-                        style={{fontSize:'12px', background: theme === 'cool' ? 'rgba(255,255,255,0.06)' : 'rgba(124,158,255,0.08)', borderRadius:'10px', padding:'2px 6px', border:`0.5px solid ${t.border}`}}>
+                        style={{ fontSize: '12px', background: theme === 'cool' ? 'rgba(255,255,255,0.06)' : 'rgba(124,158,255,0.08)', borderRadius: '10px', padding: '2px 6px', border: `0.5px solid ${t.border}` }}>
                         {r.emoji}
                       </span>
                     ))}
@@ -577,72 +484,58 @@ export default function ChatRoomPage() {
             )
           })}
           {typing && (
-            <div style={{display:'flex', justifyContent:'flex-start'}}>
-              <div style={{background:t.msgOther, padding:'10px 14px', borderRadius:'18px', borderBottomLeftRadius:'4px', display:'flex', gap:'4px', alignItems:'center'}}>
-                {[0,1,2].map(i => (
-                  <div key={i} style={{width:'6px', height:'6px', background:t.dot, borderRadius:'50%', animation:'bounce 1.2s ease infinite', animationDelay:`${i*0.2}s`}} />
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ background: t.msgOther, padding: '10px 14px', borderRadius: '18px', borderBottomLeftRadius: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{ width: '6px', height: '6px', background: t.dot, borderRadius: '50%', animation: 'bounce 1.2s ease infinite', animationDelay: `${i * 0.2}s` }} />
                 ))}
               </div>
             </div>
           )}
           {partnerLeft && (
-            <div style={{textAlign:'center', color:'#ef4444', background:'#FEF2F2', borderRadius:'12px', padding:'8px 16px', fontSize:'12px'}}>
-              Người kia đã rời phòng 👋
-            </div>
+            <div style={{ textAlign: 'center', color: '#ef4444', background: '#FEF2F2', borderRadius: '12px', padding: '8px 16px', fontSize: '12px' }}>Người kia đã rời phòng 👋</div>
           )}
           <div ref={bottomRef} />
         </div>
 
         {/* Input */}
-        <div style={{padding:'12px 16px', borderTop:`0.5px solid ${t.border}`, display:'flex', flexDirection:'column', gap:'8px'}}>
-          {recError && (
-            <div style={{fontSize:'11px', color:'#ef4444', textAlign:'center'}}>{recError}</div>
-          )}
-
+        <div style={{ padding: '12px 16px', borderTop: `0.5px solid ${t.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {recError && <div style={{ fontSize: '11px', color: '#ef4444', textAlign: 'center' }}>{recError}</div>}
           {isRecording ? (
-            <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', borderRadius:'20px', background: theme === 'cool' ? '#252836' : '#FEF2F2'}}>
-              <span style={{width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', flexShrink:0, animation:'pulse 1s ease infinite'}} />
-              <div style={{flex:1, height:'4px', borderRadius:'4px', background:'rgba(239,68,68,0.2)', overflow:'hidden'}}>
-                <div style={{height:'100%', width:`${Math.min(100, (elapsedMs / maxDurationMs) * 100)}%`, background:'#ef4444', transition:'width 0.1s linear'}} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '20px', background: theme === 'cool' ? '#252836' : '#FEF2F2' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', flexShrink: 0, animation: 'pulse 1s ease infinite' }} />
+              <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: 'rgba(239,68,68,0.2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, (elapsedMs / maxDurationMs) * 100)}%`, background: '#ef4444', transition: 'width 0.1s linear' }} />
               </div>
-              <span style={{fontSize:'12px', color:'#ef4444', fontWeight:600, flexShrink:0}}>{Math.ceil(elapsedMs / 1000)}s / 30s</span>
-              <button onClick={cancelRecording} style={{background:'none', border:'none', color:'#ef4444', fontSize:'12px', cursor:'pointer', flexShrink:0}}>Hủy</button>
-              <button onClick={handleMicUp}
-                style={{width:'32px', height:'32px', borderRadius:'50%', border:'none', background:'#ef4444', color:'white', cursor:'pointer', flexShrink:0, fontSize:'13px'}}>
-                ✓
-              </button>
+              <span style={{ fontSize: '12px', color: '#ef4444', fontWeight: 600, flexShrink: 0 }}>{Math.ceil(elapsedMs / 1000)}s / 30s</span>
+              <button onClick={cancelRecording} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>Hủy</button>
+              <button onClick={handleMicUp} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', background: '#ef4444', color: 'white', cursor: 'pointer', flexShrink: 0, fontSize: '13px' }}>✓</button>
             </div>
           ) : isProcessing ? (
-            <div style={{textAlign:'center', fontSize:'12px', color:t.dot, padding:'8px'}}>🎚️ Đang đổi giọng ẩn danh...</div>
+            <div style={{ textAlign: 'center', fontSize: '12px', color: t.dot, padding: '8px' }}>🎚️ Đang đổi giọng ẩn danh...</div>
           ) : (
             <>
-              {/* Emoji bar */}
-              <div style={{display:'flex', gap:'6px', overflowX:'auto', paddingBottom:'4px'}}>
-                {['😊','😢','😅','🥺','❤️','💙','🌿','✨','😭','🤗','😤','💪','🙏','😴','🫂','👋'].map(emoji => (
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {['😊', '😢', '😅', '🥺', '❤️', '💙', '🌿', '✨', '😭', '🤗', '😤', '💪', '🙏', '😴', '🫂', '👋'].map(emoji => (
                   <button key={emoji} onClick={() => setInput(prev => prev + emoji)}
-                    style={{fontSize:'18px', background:'none', border:'none', cursor:'pointer', padding:'2px 4px', borderRadius:'8px', flexShrink:0, transition:'transform 0.1s'}}
+                    style={{ fontSize: '18px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: '8px', flexShrink: 0, transition: 'transform 0.1s' }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.3)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
                     {emoji}
                   </button>
                 ))}
               </div>
-
-              {/* Input row */}
-              <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                <button onClick={handleMicDown} title="Ghi voice note ẩn danh (giữ tối đa 30s)"
-                  style={{width:'38px', height:'38px', borderRadius:'50%', border:`0.5px solid ${t.border}`, background:'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'15px', flexShrink:0}}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button onClick={handleMicDown}
+                  style={{ width: '38px', height: '38px', borderRadius: '50%', border: `0.5px solid ${t.border}`, background: 'transparent', color: theme === 'cool' ? '#C4C9E2' : '#5a6889', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>
                   🎙️
                 </button>
-                <input
-                  value={input}
-                  onChange={e => { setInput(e.target.value); handleTyping() }}
+                <input value={input} onChange={e => { setInput(e.target.value); handleTyping() }}
                   onKeyDown={e => e.key === 'Enter' && sendMessage()}
                   placeholder="Nhập tin nhắn..."
-                  style={{flex:1, padding:'10px 16px', borderRadius:'20px', border:`0.5px solid ${t.border}`, background:t.input, fontSize:'13px', color: theme === 'cool' ? '#c0c8e8' : '#2D3748', outline:'none', transition:'all 0.3s'}}
-                />
+                  style={{ flex: 1, padding: '10px 16px', borderRadius: '20px', border: `0.5px solid ${t.border}`, background: t.input, fontSize: '13px', color: theme === 'cool' ? '#c0c8e8' : '#2D3748', outline: 'none', transition: 'all 0.3s' }} />
                 <button onClick={sendMessage} disabled={!input.trim()}
-                  style={{width:'38px', height:'38px', borderRadius:'50%', border:'none', background: input.trim() ? t.send : '#e0e4f0', color:'white', cursor: input.trim() ? 'pointer' : 'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', transition:'all 0.2s', flexShrink:0}}>
+                  style={{ width: '38px', height: '38px', borderRadius: '50%', border: 'none', background: input.trim() ? t.send : '#e0e4f0', color: 'white', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'all 0.2s', flexShrink: 0 }}>
                   ➤
                 </button>
               </div>
@@ -651,13 +544,8 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      {showCheckin && (
-        <CheckinModal theme={theme} onPick={key => finishLeaving(key)} onSkip={() => finishLeaving()} />
-      )}
-
-      {showReport && (
-        <ReportModal theme={theme} roomId={roomId as string} reporterName={session.displayName} onClose={() => setShowReport(false)} />
-      )}
+      {showCheckin && <CheckinModal theme={theme} onPick={key => finishLeaving(key)} onSkip={() => finishLeaving()} />}
+      {showReport && <ReportModal theme={theme} roomId={roomId} reporterName={session.displayName || 'Anonymous'} onClose={() => setShowReport(false)} />}
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
