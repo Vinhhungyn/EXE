@@ -1,0 +1,6 @@
+const REPORT_REASONS = [
+  { key: 'spam', label: 'Spam hoặc quảng cáo' },
+  { key: 'harassment', label: 'Qu騯扰 hoặc xúc phạm' },
+  { key: 'inappropriate', label: 'Nội dung không phù hợp' },
+  { key: 'other', label: 'Khác' },
+] as const
