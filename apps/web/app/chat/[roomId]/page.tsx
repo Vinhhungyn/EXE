@@ -26,10 +26,10 @@ const CHECKIN_OPTIONS = [
 ] as const
 
 const REPORT_REASONS = [
-  { key: 'spam', label: 'Spam hoặc quảng cáo' },
-  { key: 'harassment', label: 'Qu骚扰hoặc xúc phạm' },
-  { key: 'inappropriate', label: 'Nội dung không phù hợp' },
-  { key: 'other', label: 'Khác' },
+  { key: 'spam', label: 'Spam' },
+  { key: 'harassment', label: 'Hanh dong xau' },
+  { key: 'inappropriate', label: 'Noi dung khong hop le' },
+  { key: 'other', label: 'Khac' },
 ] as const
 
 const THEMES = {
@@ -194,27 +194,49 @@ function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey
   const [details, setDetails] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async () => {
     if (!reason) return
     setLoading(true)
+    setError('')
+    
+    const payload = {
+      reporterName,
+      reportedName: 'Unknown',
+      reason: reason + (details ? ': ' + details : ''),
+      roomId,
+    }
+    
+    console.log('[REPORT] Payload:', payload)
+    console.log('[REPORT] API_URL:', API_URL)
+    console.log('[REPORT] Endpoint:', `${API_URL}/api/v1/reports`)
+    
     try {
-      const response = await fetch(`${API_URL}/api/v1/reports`, {
+      const endpoint = `${API_URL}/api/v1/reports`
+      console.log('[REPORT] Sending to:', endpoint)
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reporterName,
-          reportedName: 'Unknown', // Ẩn danh, chưa biết tên người bị báo cáo
-          reason: reason + (details ? ': ' + details : ''),
-          roomId,
-        }),
+        body: JSON.stringify(payload),
       })
+      
+      console.log('[REPORT] Response status:', response.status)
+      console.log('[REPORT] Response OK:', response.ok)
+      
+      const responseText = await response.text()
+      console.log('[REPORT] Response body:', responseText)
+      
       if (response.ok) {
         setSubmitted(true)
         setTimeout(() => onClose(), 1500)
+      } else {
+        setError(`Error: ${response.status} - ${responseText}`)
       }
     } catch (err) {
-      console.error('Report error:', err)
+      console.error('[REPORT] Error:', err)
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -245,6 +267,13 @@ function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey
               Báo cáo vi phạm
             </h2>
             <p style={{ fontSize: '12px', color: t.dot, marginBottom: '20px' }}>Lý do báo cáo</p>
+            
+            {error && (
+              <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', marginBottom: '12px' }}>
+                {error}
+              </div>
+            )}
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
               {REPORT_REASONS.map(opt => (
                 <button key={opt.key} onClick={() => setReason(opt.key)}
@@ -361,7 +390,6 @@ export default function ChatRoomPage() {
     socket.on('chat:reaction', ({ messageId, emoji, displayName }: { messageId: string; emoji: string; displayName: string }) => {
       setReactions(prev => {
         const existing = prev[messageId] ?? []
-        // Mỗi người chỉ giữ 1 reaction gần nhất trên 1 message
         const withoutThisUser = existing.filter(r => r.displayName !== displayName)
         return { ...prev, [messageId]: [...withoutThisUser, { emoji, displayName }] }
       })
@@ -393,7 +421,6 @@ export default function ChatRoomPage() {
 
   const leaveRoom = () => {
     socketRef.current?.emit('chat:leave', { roomId })
-    // Chỉ hỏi checkin nếu đã thực sự trò chuyện (có ít nhất 1 tin nhắn)
     if (messages.length > 0) {
       setShowCheckin(true)
     } else {
@@ -402,7 +429,6 @@ export default function ChatRoomPage() {
   }
 
   const finishLeaving = (key?: typeof CHECKIN_OPTIONS[number]['key']) => {
-    // Hoàn thành một cuộc trò chuyện có ý nghĩa -> cộng điểm tin cậy ẩn danh
     addTrustPoints('chat_completed')
     if (key) {
       const opt = CHECKIN_OPTIONS.find(o => o.key === key)!
@@ -574,7 +600,6 @@ export default function ChatRoomPage() {
           )}
 
           {isRecording ? (
-            /* Recording UI */
             <div style={{display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', borderRadius:'20px', background: theme === 'cool' ? '#252836' : '#FEF2F2'}}>
               <span style={{width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', flexShrink:0, animation:'pulse 1s ease infinite'}} />
               <div style={{flex:1, height:'4px', borderRadius:'4px', background:'rgba(239,68,68,0.2)', overflow:'hidden'}}>
