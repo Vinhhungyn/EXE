@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { io, Socket } from 'socket.io-client'
 import { API_URL } from '@/lib/config'
 import { useVoiceRecorder, blobToBase64 } from '@/hooks/useVoiceRecorder'
@@ -270,6 +270,7 @@ export default function ChatRoomPage() {
   const params = useParams()
   const roomId = Array.isArray(params.roomId) ? params.roomId[0] : (params.roomId || 'unknown')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [partnerLeft, setPartnerLeft] = useState(false)
@@ -293,9 +294,10 @@ export default function ChatRoomPage() {
     ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
     : {}
 
-  const partnerName = typeof window !== 'undefined'
-    ? sessionStorage.getItem('rc_partner') || 'Unknown'
-    : 'Unknown'
+  // Ưu tiên lấy từ URL query param (reliable hơn sessionStorage khi navigate)
+  const partnerName = searchParams.get('partner') ||
+    (typeof window !== 'undefined' ? sessionStorage.getItem('rc_partner') : null) ||
+    'Unknown'
 
   const t = THEMES[theme]
 

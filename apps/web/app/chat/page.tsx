@@ -80,11 +80,11 @@ export default function ChatPage() {
       setMatched(true)
       setFinding(false)
 
-      // Lưu partnerName để dùng khi báo cáo trong phòng chat
+      // Lưu partnerName cả sessionStorage lẫn URL param để đảm bảo không mất
       sessionStorage.setItem('rc_partner', partner)
 
       setTimeout(() => {
-        router.push(`/chat/${roomId}`)
+        router.push(`/chat/${roomId}?partner=${encodeURIComponent(partner)}`)
       }, 2000)
     })
   }
