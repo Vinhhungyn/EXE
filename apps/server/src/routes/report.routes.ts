@@ -63,7 +63,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
+    const id = String(req.params.id)
     const { status } = req.body
 
     if (!status || !['resolved', 'dismissed'].includes(status)) {
