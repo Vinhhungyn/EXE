@@ -68,7 +68,6 @@ export default function AdminDashboard() {
     }
 
     fetchData()
-    // Poll mỗi 30s để update số liệu
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -256,12 +255,14 @@ export default function AdminDashboard() {
                     <div className="ad-card-title">🚨 Báo cáo chờ xử lý</div>
                     <table className="ad-table">
                       <thead><tr>
-                        <th>ID</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
+                        <th>ID</th><th>Người báo cáo</th><th>Người bị báo</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
                       </tr></thead>
                       <tbody>
                         {reports.filter(r => r.status === 'pending').map(r => (
                           <tr key={r.id}>
                             <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
+                            <td style={{color:'rgba(255,255,255,0.5)'}}>{r.reporterName}</td>
+                            <td style={{color:'#ffbe32',fontWeight:600}}>{r.reportedName}</td>
                             <td>{r.reason}</td>
                             <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(r.createdAt)}</td>
                             <td><span className="ad-badge pending">Chờ xử lý</span></td>
@@ -274,7 +275,7 @@ export default function AdminDashboard() {
                           </tr>
                         ))}
                         {reports.filter(r => r.status === 'pending').length === 0 && (
-                          <tr><td colSpan={5} style={{textAlign:'center',color:'rgba(255,255,255,0.2)',padding:'24px'}}>✅ Không có báo cáo nào chờ xử lý</td></tr>
+                          <tr><td colSpan={7} style={{textAlign:'center',color:'rgba(255,255,255,0.2)',padding:'24px'}}>✅ Không có báo cáo nào chờ xử lý</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -303,12 +304,14 @@ export default function AdminDashboard() {
                   <div className="ad-card-title">🚨 Tất cả báo cáo ({reports.length})</div>
                   <table className="ad-table">
                     <thead><tr>
-                      <th>ID</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
+                      <th>ID</th><th>Người báo cáo</th><th>Người bị báo</th><th>Lý do</th><th>Thời gian</th><th>Trạng thái</th><th>Hành động</th>
                     </tr></thead>
                     <tbody>
                       {reports.map(r => (
                         <tr key={r.id}>
                           <td style={{color:'rgba(124,158,255,0.7)',fontWeight:600}}>{r.id}</td>
+                          <td style={{color:'rgba(255,255,255,0.5)'}}>{r.reporterName}</td>
+                          <td style={{color:'#ffbe32',fontWeight:600}}>{r.reportedName}</td>
                           <td>{r.reason}</td>
                           <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(r.createdAt)}</td>
                           <td>
@@ -338,7 +341,7 @@ export default function AdminDashboard() {
                   <div className="ad-card-title">👥 Người dùng gần đây ({recentUsers.length})</div>
                   <table className="ad-table">
                     <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th></tr></thead>
-                    <tbody>
+                  <tbody>
                       {recentUsers.map((u, i) => (
                         <tr key={i}>
                           <td style={{fontWeight:500}}>{u.name}</td>

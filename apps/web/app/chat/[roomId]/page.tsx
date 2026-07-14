@@ -156,7 +156,9 @@ function CheckinModal({ theme, onPick, onSkip }: { theme: ThemeKey; onPick: (key
   )
 }
 
-function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey; roomId: string; reporterName: string; onClose: () => void }) {
+function ReportModal({ theme, roomId, reporterName, reportedName, onClose }: {
+  theme: ThemeKey; roomId: string; reporterName: string; reportedName: string; onClose: () => void
+}) {
   const t = THEMES[theme]
   const [reason, setReason] = useState<typeof REPORT_REASONS[number]['key'] | null>(null)
   const [details, setDetails] = useState('')
@@ -169,15 +171,14 @@ function ReportModal({ theme, roomId, reporterName, onClose }: { theme: ThemeKey
     setLoading(true)
     setError('')
 
-    // Lấy label tiếng Việt để gửi lên server
     const reasonLabel = REPORT_REASONS.find(r => r.key === reason)?.label || reason
     const fullReason = details.trim() ? `${reasonLabel}: ${details.trim()}` : reasonLabel
 
     const payload = {
       reporterName: reporterName || 'Anonymous',
-      reportedName: 'Unknown',
+      reportedName: reportedName || 'Unknown',
       reason: fullReason,
-      roomId: roomId || 'unknown-room', // Đảm bảo không undefined
+      roomId: roomId || 'unknown-room',
     }
 
     try {
@@ -267,7 +268,6 @@ type CheckinEntry = {
 
 export default function ChatRoomPage() {
   const params = useParams()
-  // FIX: useParams() trả string | string[], phải normalize đúng cách
   const roomId = Array.isArray(params.roomId) ? params.roomId[0] : (params.roomId || 'unknown')
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
@@ -292,6 +292,10 @@ export default function ChatRoomPage() {
   const session = typeof window !== 'undefined'
     ? JSON.parse(sessionStorage.getItem('rc_session') || '{}')
     : {}
+
+  const partnerName = typeof window !== 'undefined'
+    ? sessionStorage.getItem('rc_partner') || 'Unknown'
+    : 'Unknown'
 
   const t = THEMES[theme]
 
@@ -545,7 +549,7 @@ export default function ChatRoomPage() {
       </div>
 
       {showCheckin && <CheckinModal theme={theme} onPick={key => finishLeaving(key)} onSkip={() => finishLeaving()} />}
-      {showReport && <ReportModal theme={theme} roomId={roomId} reporterName={session.displayName || 'Anonymous'} onClose={() => setShowReport(false)} />}
+      {showReport && <ReportModal theme={theme} roomId={roomId} reporterName={session.displayName || 'Anonymous'} reportedName={partnerName} onClose={() => setShowReport(false)} />}
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }

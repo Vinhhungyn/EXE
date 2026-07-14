@@ -35,7 +35,6 @@ export default function ChatPage() {
       })
   }, [])
 
-  // ✅ FIX BUG 3 — cleanup socket khi unmount
   useEffect(() => {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current)
@@ -77,9 +76,12 @@ export default function ChatPage() {
       if (countdownRef.current) clearInterval(countdownRef.current)
       const partner = users.find(u => u !== session.displayName) || 'Người lạ'
       setMatchedName(partner)
-      setMatchReason(matchReason)   // ✅ vẫn set đúng
+      setMatchReason(matchReason)
       setMatched(true)
       setFinding(false)
+
+      // Lưu partnerName để dùng khi báo cáo trong phòng chat
+      sessionStorage.setItem('rc_partner', partner)
 
       setTimeout(() => {
         router.push(`/chat/${roomId}`)
@@ -104,7 +106,6 @@ export default function ChatPage() {
   return (
     <div style={{minHeight:'100vh', background:'#F8F9FF', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px', position:'relative'}}>
 
-      {/* ✅ FIX BUG 1 — Hiển thị matchReason trong popup */}
       {matched && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, backdropFilter:'blur(4px)'}}>
           <div style={{background:'white', borderRadius:'24px', padding:'32px 28px', textAlign:'center', maxWidth:'320px', width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)', animation:'popIn 0.3s ease'}}>
@@ -113,12 +114,10 @@ export default function ChatPage() {
             <p style={{fontSize:'14px', color:'#8fa0b8', marginBottom:'8px'}}>
               Kết nối với <strong style={{color:'#7C9EFF'}}>{matchedName}</strong>
             </p>
-            {/* ✅ Hiển thị lý do match */}
             <p style={{fontSize:'12px', color:'#A8D5BA', marginBottom:'16px', background:'rgba(168,213,186,0.1)', padding:'6px 12px', borderRadius:'20px', display:'inline-block'}}>
               ✨ {matchReason}
             </p>
             <div style={{display:'flex', gap:'4px', justifyContent:'center', marginTop:'8px'}}>
-              {/* ✅ FIX BUG 2 — xóa dấu ' thừa trong animationDelay */}
               {[0,1,2].map(i => (
                 <div key={i} style={{width:'8px', height:'8px', borderRadius:'50%', background:'#7C9EFF', animation:'bounce 1s ease infinite', animationDelay:`${i*0.2}s`}} />
               ))}
@@ -134,7 +133,6 @@ export default function ChatPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* Card */}
       <div style={{background:'white', borderRadius:'24px', border:'0.5px solid rgba(124,158,255,0.2)', boxShadow:'0 4px 28px rgba(124,158,255,0.1)', padding:'32px 28px', width:'100%', maxWidth:'400px', textAlign:'center'}}>
 
         <img src="/logo.png" alt="logo" style={{height:'40px', width:'40px',display:'block', margin:'0 auto', marginBottom:'12px', borderRadius:'10px'}} />
@@ -178,23 +176,17 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* Online indicator */}
       <div style={{marginTop:'16px', display:'flex', alignItems:'center', gap:'6px', fontSize:'12px', color:'#8fa0b8'}}>
         <div style={{width:'6px', height:'6px', borderRadius:'50%', background:'#A8D5BA'}} />
         Đang có người online · Ẩn danh hoàn toàn
       </div>
 
-
-      {/* Back button */}{/* Back button */}
-<div style={{position:'absolute', top:'16px', left:'16px'}}>
-  <button onClick={() => router.push('/')}
-    style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'20px', border:'0.5px solid rgba(124,158,255,0.3)', background:'white', color:'#5a6889', fontSize:'12px', cursor:'pointer'}}>
-    ← Trang chủ
-  </button>
-  
-</div>  
-
+      <div style={{position:'absolute', top:'16px', left:'16px'}}>
+        <button onClick={() => router.push('/')}
+          style={{display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'20px', border:'0.5px solid rgba(124,158,255,0.3)', background:'white', color:'#5a6889', fontSize:'12px', cursor:'pointer'}}>
+          ← Trang chủ
+        </button>
+      </div>
     </div>
-    
   )
 }
