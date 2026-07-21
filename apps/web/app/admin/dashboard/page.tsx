@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { API_URL } from '@/lib/config'
 
@@ -27,6 +27,23 @@ interface RecentUser {
   mode: string
 }
 
+interface UserModerationStatus {
+  name: string
+  status: 'normal' | 'warned' | 'banned'
+  reason?: string
+  adminNote?: string
+  warnCount: number
+  updatedAt: string
+}
+
+type ModerationModal = {
+  open: boolean
+  action: 'warn' | 'ban' | null
+  userName: string
+  reason: string
+  adminNote: string
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [tab, setTab] = useState<'overview' | 'reports' | 'users'>('overview')
@@ -34,43 +51,62 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<StatCard[]>([])
   const [reports, setReports] = useState<Report[]>([])
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([])
+  const [userStatuses, setUserStatuses] = useState<Record<string, UserModerationStatus>>({})
+  const [modal, setModal] = useState<ModerationModal>({
+    open: false, action: null, userName: '', reason: '', adminNote: ''
+  })
+  const [modalLoading, setModalLoading] = useState(false)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [statsRes, reportsRes, moderationRes] = await Promise.all([
+        fetch(`${API_URL}/api/v1/analytics/overview`),
+        fetch(`${API_URL}/api/v1/reports`),
+        fetch(`${API_URL}/api/v1/moderation/users`),
+      ])
+
+      if (statsRes.ok) {
+        const data = await statsRes.json()
+        const s = data.stats
+        setStats([
+          { icon: '👥', label: 'Tổng người dùng', value: String(s.totalUsers), change: '+5% tuần này', up: true },
+          { icon: '💬', label: 'Phiên chat hôm nay', value: String(s.chatSessionsToday), change: '+3% so với hôm qua', up: true },
+          { icon: '🤖', label: 'Tin nhắn AI / ngày', value: String(s.aiMessagesToday), change: '+8% tuần này', up: true },
+          { icon: '🚨', label: 'Báo cáo chờ xử lý', value: String(s.pendingReports || 0), change: '', up: false },
+        ])
+        setRecentUsers(data.recentUsers || [])
+      }
+
+      if (reportsRes.ok) {
+        const data: Report[] = await reportsRes.json()
+        setReports(data)
+      }
+
+      if (moderationRes.ok) {
+        const data: UserModerationStatus[] = await moderationRes.json()
+        const map: Record<string, UserModerationStatus> = {}
+        data.forEach(u => { map[u.name] = u })
+        setUserStatuses(map)
+      }
+    } catch (err) {
+      console.error('Fetch dashboard data error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const [statsRes, reportsRes] = await Promise.all([
-          fetch(`${API_URL}/api/v1/analytics/overview`),
-          fetch(`${API_URL}/api/v1/reports`),
-        ])
-
-        if (statsRes.ok) {
-          const data = await statsRes.json()
-          const s = data.stats
-          setStats([
-            { icon: '👥', label: 'Tổng người dùng', value: String(s.totalUsers), change: '+5% tuần này', up: true },
-            { icon: '💬', label: 'Phiên chat hôm nay', value: String(s.chatSessionsToday), change: '+3% so với hôm qua', up: true },
-            { icon: '🤖', label: 'Tin nhắn AI / ngày', value: String(s.aiMessagesToday), change: '+8% tuần này', up: true },
-            { icon: '🚨', label: 'Báo cáo chờ xử lý', value: String(s.pendingReports || 0), change: '', up: false },
-          ])
-          setRecentUsers(data.recentUsers || [])
-        }
-
-        if (reportsRes.ok) {
-          const data: Report[] = await reportsRes.json()
-          setReports(data)
-        }
-      } catch (err) {
-        console.error('Fetch dashboard data error:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   const handleResolve = async (id: string) => {
     try {
@@ -81,6 +117,7 @@ export default function AdminDashboard() {
       })
       if (res.ok) {
         setReports(r => r.map(x => x.id === id ? { ...x, status: 'resolved' } : x))
+        showToast('Đã xử lý báo cáo')
       }
     } catch (err) {
       console.error('Resolve report error:', err)
@@ -96,9 +133,64 @@ export default function AdminDashboard() {
       })
       if (res.ok) {
         setReports(r => r.map(x => x.id === id ? { ...x, status: 'dismissed' } : x))
+        showToast('Đã bỏ qua báo cáo')
       }
     } catch (err) {
       console.error('Dismiss report error:', err)
+    }
+  }
+
+  const openModal = (action: 'warn' | 'ban', userName: string) => {
+    setModal({ open: true, action, userName, reason: '', adminNote: '' })
+  }
+
+  const closeModal = () => {
+    setModal({ open: false, action: null, userName: '', reason: '', adminNote: '' })
+  }
+
+  const handleModeration = async () => {
+    if (!modal.action || !modal.userName || !modal.reason.trim()) return
+    setModalLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/v1/moderation/users/${encodeURIComponent(modal.userName)}/${modal.action}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: modal.reason, adminNote: modal.adminNote }),
+      })
+      if (res.ok) {
+        const updated: UserModerationStatus = await res.json()
+        setUserStatuses(prev => ({ ...prev, [modal.userName]: updated }))
+        showToast(
+          modal.action === 'warn'
+            ? `Đã cảnh cáo ${modal.userName}`
+            : `Đã khóa ${modal.userName}`,
+          'success'
+        )
+        closeModal()
+      } else {
+        showToast('Có lỗi xảy ra, thử lại', 'error')
+      }
+    } catch (err) {
+      console.error('Moderation error:', err)
+      showToast('Lỗi kết nối server', 'error')
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  const handleUnban = async (name: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/moderation/users/${encodeURIComponent(name)}/unban`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        const updated: UserModerationStatus = await res.json()
+        setUserStatuses(prev => ({ ...prev, [name]: updated }))
+        showToast(`Đã mở khóa ${name}`)
+      }
+    } catch (err) {
+      console.error('Unban error:', err)
     }
   }
 
@@ -109,12 +201,39 @@ export default function AdminDashboard() {
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMins / 60)
     const diffDays = Math.floor(diffHours / 24)
-
     if (diffMins < 1) return 'vừa xong'
     if (diffMins < 60) return `${diffMins} phút trước`
     if (diffHours < 24) return `${diffHours} giờ trước`
     return `${diffDays} ngày trước`
   }
+
+  const getUserStatusBadge = (name: string) => {
+    const s = userStatuses[name]
+    if (!s || s.status === 'normal') return <span className="ad-badge normal">Bình thường</span>
+    if (s.status === 'warned') return <span className="ad-badge warned" title={`Lý do: ${s.reason} · ${s.warnCount} lần`}>⚠️ Cảnh cáo ({s.warnCount})</span>
+    if (s.status === 'banned') return <span className="ad-badge banned" title={`Lý do: ${s.reason}`}>🔴 Đã khóa</span>
+    return null
+  }
+
+  const getUserActions = (name: string) => {
+    const s = userStatuses[name]
+    const status = s?.status || 'normal'
+    return (
+      <div className="ad-action-btns">
+        {status !== 'banned' && (
+          <button className="ad-action-btn warn" onClick={() => openModal('warn', name)}>⚠️ Cảnh cáo</button>
+        )}
+        {status !== 'banned' && (
+          <button className="ad-action-btn ban" onClick={() => openModal('ban', name)}>🔴 Khóa</button>
+        )}
+        {status === 'banned' && (
+          <button className="ad-action-btn unban" onClick={() => handleUnban(name)}>✅ Mở khóa</button>
+        )}
+      </div>
+    )
+  }
+
+  const pendingCount = reports.filter(r => r.status === 'pending').length
 
   return (
     <>
@@ -154,23 +273,55 @@ export default function AdminDashboard() {
         .ad-table th { font-size: 11px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 12px 12px; text-align: left; font-weight: 500; }
         .ad-table td { padding: 12px; border-top: 0.5px solid rgba(255,255,255,0.05); font-size: 13px; color: rgba(255,255,255,0.75); }
         .ad-table tr:hover td { background: rgba(124,158,255,0.04); }
-        .ad-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+        .ad-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: default; }
         .ad-badge.pending { background: rgba(255,190,50,0.12); color: #ffbe32; }
         .ad-badge.resolved { background: rgba(168,213,186,0.12); color: #A8D5BA; }
         .ad-badge.dismissed { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
-        .ad-action-btns { display: flex; gap: 6px; }
-        .ad-action-btn { padding: 4px 10px; border-radius: 8px; border: none; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .ad-badge.normal { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+        .ad-badge.warned { background: rgba(255,190,50,0.15); color: #ffbe32; }
+        .ad-badge.banned { background: rgba(255,80,80,0.15); color: #ff6060; }
+        .ad-action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+        .ad-action-btn { padding: 4px 10px; border-radius: 8px; border: none; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .ad-action-btn.resolve { background: rgba(168,213,186,0.15); color: #A8D5BA; }
         .ad-action-btn.resolve:hover { background: rgba(168,213,186,0.25); }
         .ad-action-btn.dismiss { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
         .ad-action-btn.dismiss:hover { background: rgba(255,255,255,0.1); }
+        .ad-action-btn.warn { background: rgba(255,190,50,0.12); color: #ffbe32; }
+        .ad-action-btn.warn:hover { background: rgba(255,190,50,0.22); }
+        .ad-action-btn.ban { background: rgba(255,80,80,0.12); color: #ff6060; }
+        .ad-action-btn.ban:hover { background: rgba(255,80,80,0.22); }
+        .ad-action-btn.unban { background: rgba(168,213,186,0.12); color: #A8D5BA; }
+        .ad-action-btn.unban:hover { background: rgba(168,213,186,0.22); }
         .ad-tab-row { display: flex; gap: 6px; margin-bottom: 22px; }
         .ad-tab { padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid rgba(124,158,255,0.2); background: transparent; color: rgba(255,255,255,0.4); transition: all 0.15s; }
         .ad-tab.active { background: rgba(124,158,255,0.15); color: white; border-color: rgba(124,158,255,0.4); }
         .ad-tab:hover:not(.active) { background: rgba(124,158,255,0.07); color: rgba(255,255,255,0.7); }
         .ad-pending-count { background: #ffbe32; color: #0f1623; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; margin-left: 4px; }
         .ad-loading { text-align: center; padding: 40px; color: rgba(255,255,255,0.3); }
+        /* Modal */
+        .ad-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .ad-modal { background: #161e2e; border: 0.5px solid rgba(124,158,255,0.2); border-radius: 20px; padding: 28px; width: 420px; max-width: 90vw; }
+        .ad-modal-title { font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+        .ad-modal-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 20px; }
+        .ad-modal-label { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 6px; letter-spacing: 0.5px; }
+        .ad-modal-input { width: 100%; background: rgba(255,255,255,0.05); border: 0.5px solid rgba(124,158,255,0.2); border-radius: 10px; padding: 10px 14px; color: white; font-size: 13px; outline: none; margin-bottom: 14px; font-family: 'DM Sans', sans-serif; }
+        .ad-modal-input:focus { border-color: rgba(124,158,255,0.5); }
+        .ad-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+        .ad-modal-btn { padding: 9px 20px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .ad-modal-btn.cancel { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); }
+        .ad-modal-btn.cancel:hover { background: rgba(255,255,255,0.1); }
+        .ad-modal-btn.confirm-warn { background: rgba(255,190,50,0.2); color: #ffbe32; }
+        .ad-modal-btn.confirm-warn:hover { background: rgba(255,190,50,0.3); }
+        .ad-modal-btn.confirm-ban { background: rgba(255,80,80,0.2); color: #ff6060; }
+        .ad-modal-btn.confirm-ban:hover { background: rgba(255,80,80,0.3); }
+        .ad-modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Toast */
+        .ad-toast { position: fixed; bottom: 28px; right: 28px; z-index: 200; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; animation: slideUp 0.2s ease; }
+        .ad-toast.success { background: rgba(168,213,186,0.15); border: 0.5px solid rgba(168,213,186,0.3); color: #A8D5BA; }
+        .ad-toast.error { background: rgba(255,80,80,0.15); border: 0.5px solid rgba(255,80,80,0.3); color: #ff6060; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
+
       <div className="ad-root">
         {/* Sidebar */}
         <aside className="ad-sidebar">
@@ -181,20 +332,20 @@ export default function AdminDashboard() {
               <div className="ad-sidebar-role">Admin</div>
             </div>
           </div>
-          {[
+          {([
             { id: 'overview', icon: '📊', label: 'Tổng quan' },
             { id: 'reports', icon: '🚨', label: 'Báo cáo' },
             { id: 'users', icon: '👥', label: 'Người dùng' },
-          ].map(item => (
+          ] as const).map(item => (
             <button
               key={item.id}
               className={`ad-nav-item${tab === item.id ? ' active' : ''}`}
-              onClick={() => setTab(item.id as any)}
+              onClick={() => setTab(item.id)}
             >
               <span className="ad-nav-icon">{item.icon}</span>
               {item.label}
-              {item.id === 'reports' && reports.filter(r => r.status === 'pending').length > 0 && (
-                <span className="ad-pending-count">{reports.filter(r => r.status === 'pending').length}</span>
+              {item.id === 'reports' && pendingCount > 0 && (
+                <span className="ad-pending-count">{pendingCount}</span>
               )}
             </button>
           ))}
@@ -211,22 +362,22 @@ export default function AdminDashboard() {
             <h1>
               {tab === 'overview' && '📊 Tổng quan hệ thống'}
               {tab === 'reports' && '🚨 Quản lý báo cáo'}
-              {tab === 'users' && '👥 Người dùng gần đây'}
+              {tab === 'users' && '👥 Quản lý người dùng'}
             </h1>
             <p>Black Diamond Team · EXE101-Group04 · {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
 
           {/* Tab Bar */}
           <div className="ad-tab-row">
-            {[
+            {([
               { id: 'overview', label: '📊 Tổng quan' },
               { id: 'reports', label: '🚨 Báo cáo' },
               { id: 'users', label: '👥 Người dùng' },
-            ].map(t => (
-              <button key={t.id} className={`ad-tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id as any)}>
+            ] as const).map(t => (
+              <button key={t.id} className={`ad-tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id)}>
                 {t.label}
-                {t.id === 'reports' && reports.filter(r => r.status === 'pending').length > 0 && (
-                  <span className="ad-pending-count">{reports.filter(r => r.status === 'pending').length}</span>
+                {t.id === 'reports' && pendingCount > 0 && (
+                  <span className="ad-pending-count">{pendingCount}</span>
                 )}
               </button>
             ))}
@@ -283,13 +434,15 @@ export default function AdminDashboard() {
                   <div className="ad-card">
                     <div className="ad-card-title">👥 Người dùng mới nhất</div>
                     <table className="ad-table">
-                      <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th></tr></thead>
+                      <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
                       <tbody>
                         {recentUsers.map((u, i) => (
                           <tr key={i}>
                             <td style={{fontWeight:500}}>{u.name}</td>
                             <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(u.joinedAt)}</td>
                             <td>{u.mode}</td>
+                            <td>{getUserStatusBadge(u.name)}</td>
+                            <td>{getUserActions(u.name)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -338,17 +491,30 @@ export default function AdminDashboard() {
               {/* Users Tab */}
               {tab === 'users' && (
                 <div className="ad-card">
-                  <div className="ad-card-title">👥 Người dùng gần đây ({recentUsers.length})</div>
+                  <div className="ad-card-title">👥 Quản lý người dùng ({recentUsers.length})</div>
                   <table className="ad-table">
-                    <thead><tr><th>Nickname</th><th>Tham gia</th><th>Chế độ</th></tr></thead>
-                  <tbody>
-                      {recentUsers.map((u, i) => (
-                        <tr key={i}>
-                          <td style={{fontWeight:500}}>{u.name}</td>
-                          <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(u.joinedAt)}</td>
-                          <td>{u.mode}</td>
-                        </tr>
-                      ))}
+                    <thead><tr>
+                      <th>Nickname</th><th>Tham gia</th><th>Chế độ</th><th>Trạng thái</th><th>Vi phạm</th><th>Hành động</th>
+                    </tr></thead>
+                    <tbody>
+                      {recentUsers.map((u, i) => {
+                        const s = userStatuses[u.name]
+                        return (
+                          <tr key={i}>
+                            <td style={{fontWeight:500}}>{u.name}</td>
+                            <td style={{color:'rgba(255,255,255,0.35)'}}>{formatTime(u.joinedAt)}</td>
+                            <td>{u.mode}</td>
+                            <td>{getUserStatusBadge(u.name)}</td>
+                            <td style={{color: s?.warnCount ? '#ffbe32' : 'rgba(255,255,255,0.2)'}}>
+                              {s?.warnCount ? `${s.warnCount} lần` : '—'}
+                            </td>
+                            <td>{getUserActions(u.name)}</td>
+                          </tr>
+                        )
+                      })}
+                      {recentUsers.length === 0 && (
+                        <tr><td colSpan={6} style={{textAlign:'center',color:'rgba(255,255,255,0.2)',padding:'24px'}}>Chưa có người dùng nào</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -357,6 +523,48 @@ export default function AdminDashboard() {
           )}
         </main>
       </div>
+
+      {/* Modal Cảnh cáo / Khóa */}
+      {modal.open && (
+        <div className="ad-modal-overlay" onClick={closeModal}>
+          <div className="ad-modal" onClick={e => e.stopPropagation()}>
+            <div className="ad-modal-title">
+              {modal.action === 'warn' ? '⚠️ Cảnh cáo người dùng' : '🔴 Khóa người dùng'}
+            </div>
+            <div className="ad-modal-sub">Đối tượng: <strong style={{color:'#ffbe32'}}>{modal.userName}</strong></div>
+            <div className="ad-modal-label">LÝ DO *</div>
+            <input
+              className="ad-modal-input"
+              placeholder={modal.action === 'warn' ? 'VD: Ngôn ngữ xúc phạm, quấy rối...' : 'VD: Hành vi toxic liên tục, spam...'}
+              value={modal.reason}
+              onChange={e => setModal(m => ({ ...m, reason: e.target.value }))}
+              autoFocus
+            />
+            <div className="ad-modal-label">GHI CHÚ ADMIN (không bắt buộc)</div>
+            <input
+              className="ad-modal-input"
+              placeholder="Ghi chú nội bộ..."
+              value={modal.adminNote}
+              onChange={e => setModal(m => ({ ...m, adminNote: e.target.value }))}
+            />
+            <div className="ad-modal-actions">
+              <button className="ad-modal-btn cancel" onClick={closeModal}>Hủy</button>
+              <button
+                className={`ad-modal-btn ${modal.action === 'warn' ? 'confirm-warn' : 'confirm-ban'}`}
+                onClick={handleModeration}
+                disabled={!modal.reason.trim() || modalLoading}
+              >
+                {modalLoading ? 'Đang xử lý...' : modal.action === 'warn' ? '⚠️ Xác nhận cảnh cáo' : '🔴 Xác nhận khóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`ad-toast ${toast.type}`}>{toast.msg}</div>
+      )}
     </>
   )
 }

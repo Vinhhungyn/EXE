@@ -10,6 +10,7 @@ import healthRouter from './routes/health.routes'
 import chatRouter from './routes/chat.routes'
 import analyticsRouter from './routes/analytics.routes'
 import reportRouter from './routes/report.routes'
+import moderationRouter from './routes/moderation.routes'
 import { globalRateLimit } from './middleware/rateLimit.middleware'
 import { initSocket } from './socket/index'
 import aiRouter from './routes/ai.routes'
@@ -49,6 +50,7 @@ app.use('/api/v1/chat', chatRouter)
 app.use('/api/v1/ai', aiRouter)
 app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/reports', reportRouter)
+app.use('/api/v1/moderation', moderationRouter)
 
 initSocket(io)
 
