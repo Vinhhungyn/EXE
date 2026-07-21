@@ -30,6 +30,7 @@ export default function OnboardingPage() {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([])
   const [selectedJob, setSelectedJob] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const toggleTopic = (id: string) => {
     setSelectedTopics(prev =>
@@ -39,8 +40,17 @@ export default function OnboardingPage() {
 
   const handleStart = async () => {
     setLoading(true)
+    setErrorMsg('')
     try {
-      const res = await fetch(`${API_URL}/api/v1/chat/session`, { method: 'POST' })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000) // 15s timeout
+
+      const res = await fetch(`${API_URL}/api/v1/chat/session`, {
+        method: 'POST',
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
       const data = await res.json()
       const displayName = nickname.trim() || data.displayName
       sessionStorage.setItem('rc_session', JSON.stringify({
@@ -55,8 +65,13 @@ export default function OnboardingPage() {
       } else {
         router.push('/chat')
       }
-    } catch {
+    } catch (err: unknown) {
       setLoading(false)
+      if (err instanceof Error && err.name === 'AbortError') {
+        setErrorMsg('⚠️ Máy chủ đang khởi động, vui lòng thử lại sau vài giây!')
+      } else {
+        setErrorMsg('❌ Không kết nối được máy chủ, thử lại nhé!')
+      }
     }
   }
 
@@ -146,13 +161,21 @@ export default function OnboardingPage() {
                   </button>
                 ))}
               </div>
+
+              {/* Error message */}
+              {errorMsg && (
+                <div style={{marginBottom:'12px', padding:'10px 14px', borderRadius:'12px', background:'#fff0f0', border:'1px solid #ffcccc', color:'#cc4444', fontSize:'13px'}}>
+                  {errorMsg}
+                </div>
+              )}
+
               <div style={{display:'flex', gap:'10px'}}>
-                <button onClick={() => setStep(2)}
+                <button onClick={() => setStep(2)} disabled={loading}
                   style={{flex:1, padding:'12px', borderRadius:'14px', border:'1px solid rgba(124,158,255,0.3)', background:'white', color:'#5a6889', fontSize:'14px', cursor:'pointer'}}>
                   ← Quay lại
                 </button>
                 <button onClick={handleStart} disabled={loading}
-                  style={{flex:2, padding:'12px', borderRadius:'14px', border:'none', background:'linear-gradient(135deg,#7C9EFF,#9BB8FF)', color:'white', fontSize:'14px', fontWeight:600, cursor:'pointer', opacity: loading ? 0.7 : 1}}>
+                  style={{flex:2, padding:'12px', borderRadius:'14px', border:'none', background:'linear-gradient(135deg,#7C9EFF,#9BB8FF)', color:'white', fontSize:'14px', fontWeight:600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1}}>
                   {loading ? '⏳ Đang kết nối...' : '🌿 Bắt đầu tâm sự'}
                 </button>
               </div>
@@ -161,7 +184,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Skip */}
-        <button onClick={handleStart} style={{marginTop:'16px', fontSize:'12px', color:'#8fa0b8', background:'none', border:'none', cursor:'pointer'}}>
+        <button onClick={handleStart} disabled={loading} style={{marginTop:'16px', fontSize:'12px', color:'#8fa0b8', background:'none', border:'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1}}>
           Bỏ qua, dùng ngay →
         </button>
       </div>
