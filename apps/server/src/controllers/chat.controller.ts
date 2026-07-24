@@ -17,7 +17,8 @@ export const getMe = async (req: Request, res: Response) => {
       res.status(404).json({ error: 'Session not found' })
       return
     }
-    res.json({ sessionId: session.id, displayName: session.displayName, isOnline: session.isOnline })
+    const s = session as { id: string; displayName: string; isOnline: boolean }
+    res.json({ sessionId: s.id, displayName: s.displayName, isOnline: s.isOnline })
   } catch {
     res.status(500).json({ error: 'Server error' })
   }
