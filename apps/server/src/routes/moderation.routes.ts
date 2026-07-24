@@ -6,13 +6,14 @@ import {
   unbanUser,
   getUserStatus,
   getAllUserStatuses,
+  getBanTTL,
 } from '../utils/moderation'
+import { getIO } from '../socket/ioInstance'
 
 const router = Router()
 
 /**
  * GET /api/v1/moderation/users
- * Lấy danh sách trạng thái tất cả user đã bị xử lý
  */
 router.get('/users', async (req: Request, res: Response) => {
   try {
@@ -26,7 +27,6 @@ router.get('/users', async (req: Request, res: Response) => {
 
 /**
  * GET /api/v1/moderation/users/:name
- * Lấy trạng thái của một user cụ thể
  */
 router.get('/users/:name', async (req: Request, res: Response) => {
   try {
@@ -41,18 +41,24 @@ router.get('/users/:name', async (req: Request, res: Response) => {
 
 /**
  * PUT /api/v1/moderation/users/:name/warn
- * Cảnh cáo user
  */
 router.put('/users/:name/warn', async (req: Request, res: Response) => {
   try {
     const name = String(req.params.name)
     const { reason, adminNote } = req.body
-
-    if (!reason) {
-      return res.status(400).json({ error: 'Missing reason' })
-    }
+    if (!reason) return res.status(400).json({ error: 'Missing reason' })
 
     const result = await warnUser(name, reason, adminNote)
+
+    // Emit cảnh cáo đến socket của user (nếu đang online)
+    const io = getIO()
+    if (io) {
+      io.emit(`moderation:warn:${name}`, {
+        message: 'Bạn đã bị cảnh cáo do vi phạm nội quy.',
+        reason,
+      })
+    }
+
     logger.info(`User warned: ${name} — reason: ${reason}`)
     return res.json(result)
   } catch (err) {
@@ -63,18 +69,27 @@ router.put('/users/:name/warn', async (req: Request, res: Response) => {
 
 /**
  * PUT /api/v1/moderation/users/:name/ban
- * Khóa user
+ * Khóa user 10 phút — tự động mở sau khi TTL Redis hết
  */
 router.put('/users/:name/ban', async (req: Request, res: Response) => {
   try {
     const name = String(req.params.name)
     const { reason, adminNote } = req.body
-
-    if (!reason) {
-      return res.status(400).json({ error: 'Missing reason' })
-    }
+    if (!reason) return res.status(400).json({ error: 'Missing reason' })
 
     const result = await banUser(name, reason, adminNote)
+    const ttl = await getBanTTL(name)
+
+    // Emit kick event đến tất cả socket đang dùng displayName này
+    const io = getIO()
+    if (io) {
+      io.emit(`moderation:ban:${name}`, {
+        message: 'Bạn đã bị khóa 10 phút do vi phạm nội quy.',
+        reason,
+        banSeconds: ttl,
+      })
+    }
+
     logger.info(`User banned: ${name} — reason: ${reason}`)
     return res.json(result)
   } catch (err) {
@@ -85,7 +100,6 @@ router.put('/users/:name/ban', async (req: Request, res: Response) => {
 
 /**
  * PUT /api/v1/moderation/users/:name/unban
- * Mở khóa user
  */
 router.put('/users/:name/unban', async (req: Request, res: Response) => {
   try {

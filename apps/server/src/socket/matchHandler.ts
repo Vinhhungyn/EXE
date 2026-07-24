@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io'
 import { logger } from '../utils/logger'
 import { incrTotalUsers, incrChatSessionsToday, trackRecentUser } from '../utils/analytics'
+import { isUserBanned, getBanTTL } from '../utils/moderation'
 
 interface WaitingUser {
   socketId: string
@@ -11,7 +12,7 @@ interface WaitingUser {
 }
 
 const waitingQueue: WaitingUser[] = []
-const WAIT_TIMEOUT = 60000 // 60 giây chờ cùng chủ đề
+const WAIT_TIMEOUT = 60000
 
 const findBestMatch = (user: WaitingUser): number => {
   const now = Date.now()
@@ -26,13 +27,11 @@ const findBestMatch = (user: WaitingUser): number => {
     const waitedLong = (now - other.waitingSince) > WAIT_TIMEOUT
 
     let score = 0
-    score += commonTopics.length * 10  // ưu tiên chủ đề cao nhất
+    score += commonTopics.length * 10
     if (commonJob) score += 3
-    if (waitedLong) score += 1  // chờ lâu thì chấp nhận match khác chủ đề
+    if (waitedLong) score += 1
 
-    // Chỉ match nếu có điểm chung HOẶC đã chờ quá lâu
     const canMatch = commonTopics.length > 0 || commonJob || waitedLong
-    
     if (canMatch && score > bestScore) {
       bestScore = score
       bestIdx = idx
@@ -43,14 +42,25 @@ const findBestMatch = (user: WaitingUser): number => {
 }
 
 export const registerMatchHandler = (io: Server, socket: Socket) => {
-  socket.on('match:find', ({ displayName, topics, job }: {
+  socket.on('match:find', async ({ displayName, topics, job }: {
     displayName: string
     topics: string[]
     job: string
   }) => {
     logger.info(`${displayName} finding match... topics: ${topics}`)
 
-    // Mỗi lượt tìm match là một người dùng ẩn danh hoạt động -> đếm vào tổng
+    // --- Check ban trước ---
+    const banned = await isUserBanned(displayName)
+    if (banned) {
+      const ttl = await getBanTTL(displayName)
+      socket.emit('match:banned', {
+        message: `Bạn đang bị hạn chế chat. Vui lòng thử lại sau ${Math.ceil(ttl / 60)} phút.`,
+        banSeconds: ttl,
+      })
+      logger.info(`Blocked banned user: ${displayName} (${ttl}s remaining)`)
+      return
+    }
+
     incrTotalUsers()
     trackRecentUser({ name: displayName, joinedAt: new Date().toISOString(), mode: 'Người dùng' })
 
@@ -97,7 +107,6 @@ export const registerMatchHandler = (io: Server, socket: Socket) => {
       socket.emit('match:waiting')
       logger.info(`${displayName} waiting... queue: ${waitingQueue.length}`)
 
-      // Sau 60s thử match lại kể cả khác chủ đề
       setTimeout(() => {
         const stillWaiting = waitingQueue.find(u => u.socketId === socket.id)
         if (!stillWaiting) return
